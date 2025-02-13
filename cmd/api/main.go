@@ -20,10 +20,14 @@ const Version = "1.0.0"
 type Config struct {
 	port        int
 	environment string
+	db          struct {
+		dsn string
+	}
 }
 
 type Application struct {
-	config Config
+	config  Config
+	storage *Storage
 }
 
 func main() {
@@ -32,12 +36,18 @@ func main() {
 		log.Fatal(err)
 	}
 
-	app := &Application{
-		config: cfg,
+	queryTimeout := 5 * time.Second
+	storage, err := NewStorage(cfg.db.dsn, queryTimeout)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	mux := &http.ServeMux{}
-	mux.HandleFunc("GET /v1/healthcheck", app.healthCheckHandler)
+	log.Println("Connected to database")
+
+	app := &Application{
+		config:  cfg,
+		storage: storage,
+	}
 
 	addr := fmt.Sprintf(":%d", cfg.port)
 	srv := http.Server{
@@ -45,7 +55,7 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
 		Addr:         addr,
-		Handler:      mux,
+		Handler:      composeRoutes(app),
 	}
 
 	quit := make(chan error)
@@ -88,12 +98,17 @@ func loadConfig() (Config, error) {
 
 	port, err := strconv.Atoi(os.Getenv("PORT"))
 	if err != nil {
-		return Config{}, fmt.Errorf(`invalid "PORT" in configuration: %w`, err)
+		return Config{}, fmt.Errorf(`invalid environment variable "PORT" in configuration: %w`, err)
 	}
 
 	cfg := Config{
 		environment: env,
 		port:        port,
+	}
+
+	cfg.db.dsn = os.Getenv("DB_DSN")
+	if cfg.db.dsn == "" {
+		return Config{}, fmt.Errorf(`environment variable "DB_DSN" is not specified`)
 	}
 	return cfg, nil
 }
