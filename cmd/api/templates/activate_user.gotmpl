@@ -1,0 +1,23 @@
+{{define "subject"}}Welcome to the movie reservation system API!{{end}}
+{{define "body"}}
+<!doctype html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width" />
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    </head>
+    <body>
+        <p>Hi,</p>
+        <p>Thanks for signing up for an account. We're excited to have you on board!</p>
+        <p>Please send a request to the <code>PUT /v1/tokens/activation</code> endpoint with the
+        following JSON body to activate your account:</p>
+        <pre><code>
+        {
+            "token": {{.token}}
+        }
+        </code></pre>
+        <p>Please note that this is a one-time use code and it will expire in a minute.</p>
+        <p>Thanks,</p>
+    </body>
+</html>
+{{end}}
