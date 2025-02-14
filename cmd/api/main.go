@@ -42,6 +42,7 @@ type Application struct {
 	storage *Storage
 	mailer  *Mailer
 	wg      sync.WaitGroup
+	quit    chan struct{}
 }
 
 func (app *Application) Go(fn func()) {
@@ -77,7 +78,32 @@ func main() {
 		config:  cfg,
 		storage: storage,
 		mailer:  NewMailer(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
+		quit:    make(chan struct{}),
 	}
+
+	// TODO: we want some kind of a heartbeat system here to make sure we spawn a new goroutine if this one panics
+	// but it's only executing one db delete query so there is a low change that it will actually panic
+	app.Go(func() {
+		ticker := time.NewTicker(time.Minute)
+	loop:
+		for {
+			select {
+			case <-ticker.C:
+				log.Println("tokens background ticked")
+				n, err := app.storage.DeleteAllExpiredTokens()
+				if err != nil {
+					log.Println(err)
+				} else if n != 0 {
+					log.Printf("tokens background deleted: %d tokens\n", n)
+				}
+			case _, open := <-app.quit:
+				if !open {
+					break loop
+				}
+			}
+		}
+		log.Println("tokens background was shut down gracefully")
+	})
 
 	addr := fmt.Sprintf(":%d", cfg.port)
 	srv := http.Server{
@@ -101,6 +127,7 @@ func main() {
 		log.Println("Starting server shutdown")
 		err := srv.Shutdown(ctx)
 
+		close(app.quit)
 		log.Println("Waiting for background goroutines")
 		app.wg.Wait()
 

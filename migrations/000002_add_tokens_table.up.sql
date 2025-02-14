@@ -7,8 +7,7 @@ INSERT INTO token_scopes (id, scope)
 VALUES
     (0, 'activation'),
     (1, 'authentication'),
-    (2, 'password-reset'),
-    (3, 'email-reset')
+    (2, 'password-reset')
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS tokens (

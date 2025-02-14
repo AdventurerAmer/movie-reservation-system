@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type Storage struct {
@@ -161,13 +161,32 @@ func (s *Storage) GetUserFromToken(scope TokenScope, token string) (*User, error
 	return &u, nil
 }
 
-func (s *Storage) DeleteAllTokensForUser(userID int64, scope TokenScope) error {
+func (s *Storage) DeleteAllTokensForUser(userID int64, scopes []TokenScope) error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
 
 	query := `DELETE FROM tokens
-	          WHERE user_id = $1 AND scope_id = $2`
-	args := []any{userID, scope}
+	          WHERE user_id = $1 AND scope_id = ANY($2)`
+
+	args := []any{userID, pq.Array(scopes)}
 	_, err := s.db.ExecContext(ctx, query, args...)
 	return err
+}
+
+func (s *Storage) DeleteAllExpiredTokens() (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+
+	query := `DELETE FROM tokens
+	          WHERE NOW() > expires_at`
+
+	result, err := s.db.ExecContext(ctx, query)
+	if err != nil {
+		return 0, err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
 }

@@ -91,7 +91,7 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	app.Go(func() {
-		tmpl, err := template.ParseFS(Templates, "templates/*.gotmpl")
+		tmpl, err := template.ParseFS(Templates, "templates/activate_user.gotmpl")
 		if err != nil {
 			panic(err)
 		}
@@ -243,7 +243,7 @@ func (app *Application) createUserActivationTokenHandler(w http.ResponseWriter, 
 		return
 	}
 
-	err = app.storage.DeleteAllTokensForUser(u.ID, TokenScopeActivation)
+	err = app.storage.DeleteAllTokensForUser(u.ID, []TokenScope{TokenScopeActivation})
 	if err != nil {
 		writeServerErr(w)
 		return
@@ -258,7 +258,7 @@ func (app *Application) createUserActivationTokenHandler(w http.ResponseWriter, 
 	}
 
 	app.Go(func() {
-		tmpl, err := template.ParseFS(Templates, "templates/*.gotmpl")
+		tmpl, err := template.ParseFS(Templates, "templates/activate_user.gotmpl")
 		if err != nil {
 			panic(err)
 		}
@@ -342,7 +342,7 @@ func (app *Application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		return
 	}
 
-	err = app.storage.DeleteAllTokensForUser(u.ID, TokenScopeAuthentication)
+	err = app.storage.DeleteAllTokensForUser(u.ID, []TokenScope{TokenScopeAuthentication})
 	if err != nil {
 		writeServerErr(w)
 		return
@@ -358,6 +358,120 @@ func (app *Application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 		"token": token,
 	}
 	writeJSON(res, http.StatusCreated, w)
+}
+
+func (app *Application) createPasswordResetTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email *string `json:"email"`
+	}
+
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+
+	v := NewValidator()
+	v.CheckEmail(req.Email)
+
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+
+	u, err := app.storage.GetUserByEmail(*req.Email)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+	if u == nil {
+		res := map[string]any{"message": "invalid email"}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
+	err = app.storage.DeleteAllTokensForUser(u.ID, []TokenScope{TokenScopePasswordReset})
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+
+	token := generateToken()
+	_, err = app.storage.CreateTokenForUser(u.ID, TokenScopePasswordReset, token, 10*time.Minute)
+	if err != nil {
+		log.Println(err)
+		writeServerErr(w)
+		return
+	}
+
+	app.Go(func() {
+		tmpl, err := template.ParseFS(Templates, "templates/reset_password.gotmpl")
+		if err != nil {
+			panic(err)
+		}
+		data := map[string]any{
+			"token": token,
+		}
+		app.mailer.Send(u.Email, tmpl, data)
+	})
+
+	res := map[string]any{
+		"message": "password token was send to the provided email",
+	}
+	writeJSON(res, http.StatusCreated, w)
+}
+
+func (app *Application) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Password *string `json:"password"`
+		Token    *string `json:"token"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	v := NewValidator()
+	v.CheckPassword(req.Password)
+	v.Check(req.Token != nil, "token", "must be provided")
+	if req.Token != nil {
+		v.Check(*req.Token != "", "token", "must be provided")
+	}
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	u, err := app.storage.GetUserFromToken(TokenScopePasswordReset, *req.Token)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+	if u == nil {
+		writeError(errors.New("invalid token"), http.StatusConflict, w)
+		return
+	}
+
+	err = app.storage.DeleteAllTokensForUser(u.ID, []TokenScope{TokenScopePasswordReset, TokenScopeAuthentication})
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+
+	u.PasswordHash = passwordHash
+	err = app.storage.UpdateUser(u)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+
+	res := map[string]any{
+		"message": "password was reset",
+	}
+	writeJSON(res, http.StatusOK, w)
 }
 
 func getPathValuePositiveInt(r *http.Request, p string) (int, error) {

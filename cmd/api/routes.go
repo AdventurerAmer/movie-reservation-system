@@ -15,6 +15,8 @@ func composeRoutes(app *Application) http.Handler {
 	mux.HandleFunc("POST /v1/tokens/activation", app.createUserActivationTokenHandler)
 	mux.HandleFunc("PUT /v1/tokens/activation", app.activateUserHandler)
 	mux.HandleFunc("POST /v1/tokens/authentication", app.createAuthenticationTokenHandler)
+	mux.HandleFunc("POST /v1/tokens/password-reset", app.createPasswordResetTokenHandler)
+	mux.HandleFunc("PUT /v1/tokens/password-reset", app.resetPasswordHandler)
 
 	return mux
 }

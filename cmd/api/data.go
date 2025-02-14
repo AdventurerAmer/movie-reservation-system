@@ -24,7 +24,6 @@ const (
 	TokenScopeActivation TokenScope = iota
 	TokenScopeAuthentication
 	TokenScopePasswordReset
-	TokenScopeEmailReset
 )
 
 func (s TokenScope) String() string {
@@ -35,8 +34,6 @@ func (s TokenScope) String() string {
 		return "Authentication"
 	case TokenScopePasswordReset:
 		return "PasswordReset"
-	case TokenScopeEmailReset:
-		return "EmailReset"
 	}
 	return fmt.Sprintf("TokenScope %d", s)
 }
