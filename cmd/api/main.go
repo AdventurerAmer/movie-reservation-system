@@ -58,6 +58,8 @@ func (app *Application) Go(fn func()) {
 }
 
 func main() {
+	log.SetFlags(log.LUTC | log.Llongfile)
+
 	cfg, err := loadConfig()
 	if err != nil {
 		log.Fatal(err)

@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -84,9 +83,8 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	hash, token := createToken()
-
-	_, err = app.storage.CreateTokenForUser(user.ID, TokenScopeActivation, hash[:], 10*time.Minute)
+	token := generateToken()
+	_, err = app.storage.CreateTokenForUser(user.ID, TokenScopeActivation, token, 10*time.Minute)
 	if err != nil {
 		writeServerErr(w)
 		return
@@ -116,9 +114,13 @@ func (app *Application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 		writeBadRequest(err, w)
 		return
 	}
-	u, err := app.storage.GetUserByID(int64(id))
-	if err != nil {
+	u := getUserFromRequestContext(r)
+	if u == nil {
 		writeServerErr(w)
+		return
+	}
+	if u.ID != int64(id) {
+		writeForbidden(w)
 		return
 	}
 	res := map[string]any{
@@ -134,8 +136,7 @@ func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	var req struct {
-		Name  *string `json:"name"`
-		Email *string `json:"email"`
+		Name *string `json:"name"`
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeBadRequest(err, w)
@@ -143,31 +144,26 @@ func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	v := NewValidator()
-	v.Check(req.Name != nil || req.Email != nil, "name or email", "must be provided")
-	if req.Name != nil {
-		v.CheckUsername(req.Name)
-	}
-	if req.Email != nil {
-		v.CheckEmail(req.Email)
-	}
+	v.CheckUsername(req.Name)
 
 	if v.HasErrors() {
 		writeErrors(v, w)
 		return
 	}
 
-	u, err := app.storage.GetUserByID(int64(id))
-	if err != nil {
+	u := getUserFromRequestContext(r)
+	if u == nil {
 		writeServerErr(w)
+		return
+	}
+
+	if u.ID != int64(id) {
+		writeForbidden(w)
 		return
 	}
 
 	if req.Name != nil {
 		u.Name = *req.Name
-	}
-
-	if req.Email != nil {
-		u.Email = *req.Email
 	}
 
 	err = app.storage.UpdateUser(u)
@@ -188,15 +184,18 @@ func (app *Application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 		writeBadRequest(err, w)
 		return
 	}
-	u, err := app.storage.GetUserByID(int64(id))
-	if err != nil {
-		writeServerErr(w)
-		return
-	}
+
+	u := getUserFromRequestContext(r)
 	if u == nil {
 		writeServerErr(w)
 		return
 	}
+
+	if u.ID != int64(id) {
+		writeForbidden(w)
+		return
+	}
+
 	err = app.storage.DeleteUser(u)
 	if err != nil {
 		writeServerErr(w)
@@ -244,9 +243,14 @@ func (app *Application) createUserActivationTokenHandler(w http.ResponseWriter, 
 		return
 	}
 
-	hash, token := createToken()
+	err = app.storage.DeleteAllTokensForUser(u.ID, TokenScopeActivation)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
 
-	_, err = app.storage.CreateTokenForUser(u.ID, TokenScopeActivation, hash[:], 10*time.Minute)
+	token := generateToken()
+	_, err = app.storage.CreateTokenForUser(u.ID, TokenScopeActivation, token, 10*time.Minute)
 	if err != nil {
 		log.Println(err)
 		writeServerErr(w)
@@ -278,8 +282,7 @@ func (app *Application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		writeBadRequest(err, w)
 		return
 	}
-	hash := sha256.Sum256([]byte(req.Token))
-	u, err := app.storage.GetUserFromToken(TokenScopeActivation, hash[:])
+	u, err := app.storage.GetUserFromToken(TokenScopeActivation, req.Token)
 	if err != nil {
 		log.Println(err)
 		writeServerErr(w)
@@ -307,6 +310,54 @@ func (app *Application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		"user": u,
 	}
 	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) createAuthenticationTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email    *string `json:"email"`
+		Password *string `json:"password"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	v := NewValidator()
+	v.CheckEmail(req.Email)
+	v.CheckPassword(req.Password)
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	u, err := app.storage.GetUserByEmail(*req.Email)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+	if u == nil {
+		writeError(errors.New("invalid credentials"), http.StatusUnauthorized, w)
+		return
+	}
+	if bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(*req.Password)) != nil {
+		writeError(errors.New("invalid credentials"), http.StatusUnauthorized, w)
+		return
+	}
+
+	err = app.storage.DeleteAllTokensForUser(u.ID, TokenScopeAuthentication)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+
+	token := generateToken()
+	_, err = app.storage.CreateTokenForUser(u.ID, TokenScopeAuthentication, token, 24*time.Hour)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+	res := map[string]any{
+		"token": token,
+	}
+	writeJSON(res, http.StatusCreated, w)
 }
 
 func getPathValuePositiveInt(r *http.Request, p string) (int, error) {
@@ -388,4 +439,8 @@ func writeServerErr(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write(InternalServerErrorBuf.Bytes())
+}
+
+func writeForbidden(w http.ResponseWriter) {
+	writeError(errors.New("permission denied"), http.StatusForbidden, w)
 }

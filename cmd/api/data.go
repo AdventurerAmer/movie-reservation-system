@@ -20,23 +20,26 @@ type User struct {
 
 type TokenScope int16
 
-func (s TokenScope) String() string {
-	switch s {
-	case 0:
-		return "Activation"
-	case 1:
-		return "Authentication"
-	case 2:
-		return "PasswordReset"
-	}
-	return fmt.Sprintf("TokenScope %d", s)
-}
-
 const (
 	TokenScopeActivation TokenScope = iota
 	TokenScopeAuthentication
 	TokenScopePasswordReset
+	TokenScopeEmailReset
 )
+
+func (s TokenScope) String() string {
+	switch s {
+	case TokenScopeActivation:
+		return "Activation"
+	case TokenScopeAuthentication:
+		return "Authentication"
+	case TokenScopePasswordReset:
+		return "PasswordReset"
+	case TokenScopeEmailReset:
+		return "EmailReset"
+	}
+	return fmt.Sprintf("TokenScope %d", s)
+}
 
 type Token struct {
 	ID        int64      `json:"-"`
@@ -46,10 +49,14 @@ type Token struct {
 	ExpiresAt time.Time  `json:"expires_at"`
 }
 
-func createToken() ([]byte, string) {
+func generateToken() string {
 	b := make([]byte, 16)
 	_, _ = rand.Read(b)
 	token := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(b)
+	return token
+}
+
+func hashToken(token string) []byte {
 	hash := sha256.Sum256([]byte(token))
-	return hash[:], token
+	return hash[:]
 }
