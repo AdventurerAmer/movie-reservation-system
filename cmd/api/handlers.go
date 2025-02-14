@@ -2,13 +2,16 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -46,24 +49,12 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 	}
 	v := NewValidator()
 
-	v.Check(req.Name != nil, "name", "must be provided")
-	if req.Name != nil {
-		v.Check(*req.Name != "", "name", "must be provided")
-		v.Check(len(*req.Name) <= 50, "name", "must be less than or equal to 50 characters")
-	}
-
-	v.Check(req.Email != nil, "email", "must be provided")
-	if req.Email != nil {
-		v.CheckEmail(*req.Email)
-	}
-
-	v.Check(req.Password != nil, "password", "must be provided")
-	if req.Password != nil {
-		v.CheckPassword(*req.Password)
-	}
+	v.CheckUsername(req.Name)
+	v.CheckEmail(req.Email)
+	v.CheckPassword(req.Password)
 
 	if v.HasErrors() {
-		writeJSON(v.violations, http.StatusBadRequest, w)
+		writeErrors(v, w)
 		return
 	}
 
@@ -92,8 +83,29 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 		writeError(err, http.StatusConflict, w)
 		return
 	}
+
+	hash, token := createToken()
+
+	_, err = app.storage.CreateTokenForUser(user.ID, TokenScopeActivation, hash[:], 10*time.Minute)
+	if err != nil {
+		writeServerErr(w)
+		return
+	}
+
+	app.Go(func() {
+		tmpl, err := template.ParseFS(Templates, "templates/*.gotmpl")
+		if err != nil {
+			panic(err)
+		}
+		data := map[string]any{
+			"token": token,
+		}
+		app.mailer.Send(u.Email, tmpl, data)
+	})
+
 	res := map[string]any{
-		"user": user,
+		"user":    user,
+		"message": "activation token was send to the provided email",
 	}
 	writeJSON(res, http.StatusCreated, w)
 }
@@ -122,33 +134,25 @@ func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	var req struct {
-		Name     *string `json:"name"`
-		Email    *string `json:"email"`
-		Password *string `json:"password"`
+		Name  *string `json:"name"`
+		Email *string `json:"email"`
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeBadRequest(err, w)
 		return
 	}
+
 	v := NewValidator()
-
+	v.Check(req.Name != nil || req.Email != nil, "name or email", "must be provided")
 	if req.Name != nil {
-		v.Check(*req.Name != "", "name", "must be provided")
-		v.Check(len(*req.Name) <= 50, "name", "must be less than or equal to 50 characters")
+		v.CheckUsername(req.Name)
 	}
-
 	if req.Email != nil {
-		v.CheckEmail(*req.Email)
+		v.CheckEmail(req.Email)
 	}
-
-	if req.Password != nil {
-		v.CheckPassword(*req.Password)
-	}
-
-	v.Check(req.Name != nil || req.Email != nil || req.Password != nil, "name, email or password", "must be provided")
 
 	if v.HasErrors() {
-		writeJSON(v.violations, http.StatusBadRequest, w)
+		writeErrors(v, w)
 		return
 	}
 
@@ -164,15 +168,6 @@ func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request
 
 	if req.Email != nil {
 		u.Email = *req.Email
-	}
-
-	if req.Password != nil {
-		passwordHash, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
-		if err != nil {
-			writeServerErr(w)
-			return
-		}
-		u.PasswordHash = passwordHash
 	}
 
 	err = app.storage.UpdateUser(u)
@@ -209,6 +204,107 @@ func (app *Application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 	}
 	res := map[string]any{
 		"message": "user delete successfully",
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) createUserActivationTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email *string `json:"email"`
+	}
+
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+
+	v := NewValidator()
+	v.CheckEmail(req.Email)
+
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+
+	u, err := app.storage.GetUserByEmail(*req.Email)
+	if err != nil {
+		log.Println(err)
+		writeServerErr(w)
+		return
+	}
+	if u == nil {
+		res := map[string]any{"message": "invalid email"}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
+	if u.IsActivated {
+		res := map[string]any{"message": "user is already activated"}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
+	hash, token := createToken()
+
+	_, err = app.storage.CreateTokenForUser(u.ID, TokenScopeActivation, hash[:], 10*time.Minute)
+	if err != nil {
+		log.Println(err)
+		writeServerErr(w)
+		return
+	}
+
+	app.Go(func() {
+		tmpl, err := template.ParseFS(Templates, "templates/*.gotmpl")
+		if err != nil {
+			panic(err)
+		}
+		data := map[string]any{
+			"token": token,
+		}
+		app.mailer.Send(u.Email, tmpl, data)
+	})
+
+	res := map[string]any{
+		"message": "activation token was send to the provided email",
+	}
+	writeJSON(res, http.StatusCreated, w)
+}
+
+func (app *Application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Token string `json:"token"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	hash := sha256.Sum256([]byte(req.Token))
+	u, err := app.storage.GetUserFromToken(TokenScopeActivation, hash[:])
+	if err != nil {
+		log.Println(err)
+		writeServerErr(w)
+		return
+	}
+	if u == nil {
+		writeError(errors.New("invalid token"), http.StatusConflict, w)
+		return
+	}
+
+	if u.IsActivated {
+		writeError(errors.New("invalid token"), http.StatusConflict, w)
+		return
+	}
+
+	u.IsActivated = true
+	err = app.storage.UpdateUser(u)
+	if err != nil {
+		log.Println(err)
+		writeServerErr(w)
+		return
+	}
+
+	res := map[string]any{
+		"user": u,
 	}
 	writeJSON(res, http.StatusOK, w)
 }
@@ -277,6 +373,11 @@ func writeJSON(src any, status int, w http.ResponseWriter) {
 func writeError(err error, status int, w http.ResponseWriter) {
 	res := map[string]any{"error": err.Error()}
 	writeJSON(res, status, w)
+}
+
+func writeErrors(v *Validator, w http.ResponseWriter) {
+	res := map[string]any{"errors": v.violations}
+	writeJSON(res, http.StatusBadRequest, w)
 }
 
 func writeBadRequest(err error, w http.ResponseWriter) {

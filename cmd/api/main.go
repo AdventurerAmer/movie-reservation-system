@@ -5,12 +5,12 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -41,6 +41,20 @@ type Application struct {
 	config  Config
 	storage *Storage
 	mailer  *Mailer
+	wg      sync.WaitGroup
+}
+
+func (app *Application) Go(fn func()) {
+	app.wg.Add(1)
+	go func() {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Println(err)
+			}
+			app.wg.Done()
+		}()
+		fn()
+	}()
 }
 
 func main() {
@@ -63,15 +77,6 @@ func main() {
 		mailer:  NewMailer(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
-	tmpl, err := template.ParseFS(Templates, "templates/*.gotmpl")
-	if err != nil {
-		panic(err)
-	}
-	data := map[string]any{
-		"token": "test_123",
-	}
-	app.mailer.Send("gamescastle2014@gmail.com", tmpl, data)
-
 	addr := fmt.Sprintf(":%d", cfg.port)
 	srv := http.Server{
 		IdleTimeout:  time.Minute,
@@ -93,6 +98,9 @@ func main() {
 
 		log.Println("Starting server shutdown")
 		err := srv.Shutdown(ctx)
+
+		log.Println("Waiting for background goroutines")
+		app.wg.Wait()
 
 		quit <- err
 	}()

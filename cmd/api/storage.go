@@ -112,3 +112,43 @@ func (s *Storage) DeleteUser(u *User) error {
 	_, err := s.db.ExecContext(ctx, query, args...)
 	return err
 }
+
+func (s *Storage) CreateTokenForUser(userID int64, scope TokenScope, hash []byte, duration time.Duration) (*Token, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `INSERT INTO tokens(user_id, scope_id, hash, expires_at)
+	          VALUES ($1, $2, $3, $4)
+			  RETURNING id`
+	token := Token{
+		UserID:    userID,
+		Scope:     scope,
+		Hash:      hash,
+		ExpiresAt: time.Now().Add(duration),
+	}
+	args := []any{userID, scope, hash, token.ExpiresAt}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&token.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &token, nil
+}
+
+func (s *Storage) GetUserFromToken(scope TokenScope, hash []byte) (*User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `SELECT u.id, u.created_at, u.name, u.email, u.password_hash, u.is_activated, u.version
+	          FROM tokens as t
+			  INNER JOIN users as u
+			  ON t.user_id = u.id
+			  WHERE t.scope_id = $1 AND t.hash = $2 AND expires_at > NOW()`
+	args := []any{scope, hash}
+	var u User
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&u.ID, &u.CreatedAt, &u.Name, &u.Email, &u.PasswordHash, &u.IsActivated, &u.Version)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &u, nil
+}

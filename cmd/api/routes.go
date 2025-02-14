@@ -12,5 +12,8 @@ func composeRoutes(app *Application) http.Handler {
 	mux.HandleFunc("PUT /v1/users/{id}", app.updateUserHandler)
 	mux.HandleFunc("DELETE /v1/users/{id}", app.deleteUserHandler)
 
+	mux.HandleFunc("POST /v1/tokens/activation", app.createUserActivationTokenHandler)
+	mux.HandleFunc("PUT /v1/tokens/activation", app.activateUserHandler)
+
 	return mux
 }
