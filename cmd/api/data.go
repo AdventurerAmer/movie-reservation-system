@@ -78,3 +78,21 @@ func hashToken(token string) []byte {
 }
 
 type Permission string
+
+type MetaData struct {
+	CurrentPage  int `json:"current_page,omitempty"`
+	PageSize     int `json:"page_size,omitempty"`
+	FirstPage    int `json:"first_page,omitempty"`
+	LastPage     int `json:"last_page,omitempty"`
+	TotalRecords int `json:"total_records,omitempty"`
+}
+
+type Movie struct {
+	ID        int64    `json:"id"`
+	CreatedAt string   `json:"created_at"`
+	Title     string   `json:"title"`
+	Runtime   int32    `json:"runtime"`
+	Year      int32    `json:"year"`
+	Genres    []string `json:"genres"`
+	Version   int32    `json:"version"`
+}

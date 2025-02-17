@@ -18,5 +18,11 @@ func composeRoutes(app *Application) http.Handler {
 	mux.HandleFunc("POST /v1/tokens/password-reset", app.createPasswordResetTokenHandler)
 	mux.HandleFunc("PUT /v1/tokens/password-reset", app.resetPasswordHandler)
 
+	mux.HandleFunc("POST /v1/movies", app.createMovieHandler)
+	mux.HandleFunc("GET /v1/movies/{id}", app.getMovieHandler)
+	mux.HandleFunc("GET /v1/movies", app.getMoviesHandler)
+	mux.HandleFunc("PUT /v1/movies/{id}", app.updateMovieHandler)
+	mux.HandleFunc("DELETE /v1/movies/{id}", app.deleteMovieHandler)
+
 	return mux
 }

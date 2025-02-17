@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
-	"runtime/debug"
-	"strconv"
+	"slices"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -455,88 +453,184 @@ func (app *Application) resetPasswordHandler(w http.ResponseWriter, r *http.Requ
 	writeJSON(res, http.StatusOK, w)
 }
 
-func getPathValuePositiveInt(r *http.Request, p string) (int, error) {
-	v, err := strconv.Atoi(r.PathValue(p))
-	if err != nil {
-		return 0, fmt.Errorf(`invalid path parameter %q must be a positive integer`, p)
+func (app *Application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Title   string   `json:"title"`
+		Runtime int32    `json:"runtime"`
+		Year    int32    `json:"year"`
+		Genres  []string `json:"genres"`
 	}
-	if v <= 0 {
-		return 0, fmt.Errorf(`invalid path parameter %q must be a positive integer`, p)
-	}
-	return v, nil
-}
-
-func getIDFromPathValue(r *http.Request) (int, error) {
-	id, err := getPathValuePositiveInt(r, "id")
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
-}
-
-func readJSON(r *http.Request, dst any) error {
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	err := dec.Decode(dst)
-	if err != nil {
-		var synatxErr *json.SyntaxError
-		var unmarshalTypeErr *json.UnmarshalTypeError
-		var invalidUnmarshalErr *json.InvalidUnmarshalError
-		switch {
-		case errors.Is(err, io.ErrUnexpectedEOF):
-			return fmt.Errorf("body contains malformed JSON")
-		case errors.Is(err, io.EOF):
-			return fmt.Errorf("body must not empty")
-		case errors.As(err, &synatxErr):
-			return fmt.Errorf("body contains malformed JSON at character %d", synatxErr.Offset)
-		case errors.As(err, &unmarshalTypeErr):
-			if unmarshalTypeErr.Field != "" {
-				return fmt.Errorf("body contains incorrect JSON type for field %q", unmarshalTypeErr.Field)
-			}
-			return fmt.Errorf("body contains malformed JSON at character %d", unmarshalTypeErr.Offset)
-		case errors.As(err, &invalidUnmarshalErr):
-			panic(err)
-		default:
-			return err
-		}
-	}
-	return nil
-}
-
-func writeJSON(src any, status int, w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	var b bytes.Buffer
-	err := json.NewEncoder(&b).Encode(src)
-	if err != nil {
-		log.Printf("failed to encode %v: %v\n", src, err)
-		w.Write(InternalServerErrorBuf.Bytes())
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
 		return
 	}
-	w.Write(b.Bytes())
+
+	v := NewValidator()
+	v.Check(req.Title != "", "title", "must be provided")
+	v.Check(req.Runtime > 0, "runtime", "must be greater than zero")
+	v.Check(req.Year > 0, "year", "must be greater than zero")
+	v.Check(len(req.Genres) != 0, "genres", "must be provided")
+
+	for idx, g := range req.Genres {
+		v.Check(g != "", fmt.Sprintf("genre at index: %d", idx), "must be provided")
+	}
+
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+
+	m, err := app.storage.CreateMovie(req.Title, req.Runtime, req.Year, req.Genres)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"movie": m,
+	}
+	writeJSON(res, http.StatusCreated, w)
 }
 
-func writeError(err error, status int, w http.ResponseWriter) {
-	res := map[string]any{"error": err.Error()}
-	writeJSON(res, status, w)
+func (app *Application) getMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	m, err := app.storage.GetMovieByID(int64(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"movie": m,
+	}
+	writeJSON(res, http.StatusOK, w)
 }
 
-func writeErrors(v *Validator, w http.ResponseWriter) {
-	res := map[string]any{"errors": v.violations}
-	writeJSON(res, http.StatusBadRequest, w)
+func (app *Application) getMoviesHandler(w http.ResponseWriter, r *http.Request) {
+	v := NewValidator()
+
+	title := QueryStringOr(r, "title", "")
+	genres := QueryCSVOr(r, "genres", []string{})
+	page := QueryIntOr(r, "page", 1, v)
+	pageSize := QueryIntOr(r, "page_size", 20, v)
+	sort := QueryStringOr(r, "sort", "id")
+
+	v.Check(page > 0 && page <= 10_000_000, "page", "must be between 1 and 10_000_000")
+	v.Check(pageSize > 0 && pageSize <= 100, "page_size", "must be between 1 and 100")
+
+	sortList := []string{"id", "-id", "title", "-title", "year", "-year", "runtime", "-runtime"}
+	v.Check(slices.Contains(sortList, sort), "sort", "not supported")
+
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+
+	movies, meta, err := app.storage.GetMovies(title, genres, page, pageSize, sort)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"movies": movies,
+		"meta":   meta,
+	}
+	writeJSON(res, http.StatusOK, w)
 }
 
-func writeBadRequest(err error, w http.ResponseWriter) {
-	writeError(err, http.StatusBadRequest, w)
+func (app *Application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	var req struct {
+		Title   *string   `json:"title"`
+		Runtime *int32    `json:"runtime"`
+		Year    *int32    `json:"year"`
+		Genres  *[]string `json:"genres"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+
+	v := NewValidator()
+	if req.Title != nil {
+		v.Check(*req.Title != "", "title", "must be provided")
+	}
+	if req.Runtime != nil {
+		v.Check(*req.Runtime > 0, "runtime", "must be greater than zero")
+	}
+	if req.Year != nil {
+		v.Check(*req.Year > 0, "year", "must be greater than zero")
+	}
+	if req.Genres != nil {
+		v.Check(len(*req.Genres) != 0, "genres", "must be provided")
+		for idx, g := range *req.Genres {
+			v.Check(g != "", fmt.Sprintf("genre at index: %d", idx), "must be provided")
+		}
+	}
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	m, err := app.storage.GetMovieByID(int64(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if m == nil {
+		writeNotFound(w)
+		return
+	}
+	if req.Title != nil {
+		m.Title = *req.Title
+	}
+	if req.Runtime != nil {
+		m.Runtime = *req.Runtime
+	}
+	if req.Year != nil {
+		m.Year = *req.Year
+	}
+	if req.Genres != nil {
+		m.Genres = *req.Genres
+	}
+	err = app.storage.UpdateMovie(m)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"movie": m,
+	}
+	writeJSON(res, http.StatusOK, w)
 }
 
-func writeServerErr(err error, w http.ResponseWriter) {
-	log.Printf("%v\n%v\n", err, debug.Stack())
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write(InternalServerErrorBuf.Bytes())
-}
-
-func writeForbidden(w http.ResponseWriter) {
-	writeError(errors.New("permission denied"), http.StatusForbidden, w)
+func (app *Application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	m, err := app.storage.GetMovieByID(int64(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if m == nil {
+		writeNotFound(w)
+		return
+	}
+	err = app.storage.DeleteMovie(m)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"message": "resource deleted successfully",
+	}
+	writeJSON(res, http.StatusOK, w)
 }
