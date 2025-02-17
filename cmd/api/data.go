@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"html/template"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 //go:embed templates
@@ -95,4 +97,28 @@ type Movie struct {
 	Year      int32    `json:"year"`
 	Genres    []string `json:"genres"`
 	Version   int32    `json:"version"`
+}
+
+type Cinema struct {
+	ID       int32  `json:"id"`
+	Name     string `json:"name"`
+	Location string `json:"location"`
+	OwnerID  int64  `json:"ower_id"`
+	Version  int32  `json:"version"`
+}
+
+type Hall struct {
+	ID                 int32           `json:"id"`
+	Name               string          `json:"name"`
+	CinemaID           int32           `json:"cinema_id"`
+	SeatingArrangement string          `json:"seating_arrangement"`
+	SeatPrice          decimal.Decimal `json:"seat_price"`
+	Version            int32           `json:"version"`
+}
+
+type Seat struct {
+	ID       int32  `json:"id"`
+	Location string `json:"location"`
+	HallID   int32  `json:"hall_id"`
+	Version  int32  `json:"version"`
 }

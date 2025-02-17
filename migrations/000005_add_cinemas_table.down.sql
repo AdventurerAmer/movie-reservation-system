@@ -1,0 +1,5 @@
+DROP INDEX IF EXISTS cinemas_name_idx;
+DROP INDEX IF EXISTS cinemas_location_idx;
+DROP TABLE IF EXISTS seats;
+DROP TABLE IF EXISTS halls;
+DROP TABLE IF EXISTS cinemas;

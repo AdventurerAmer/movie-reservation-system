@@ -634,3 +634,23 @@ func (app *Application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 	writeJSON(res, http.StatusOK, w)
 }
+
+func (app *Application) createCinemasHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Name     string `json:"name"`
+		Location string `json:"location"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+
+	v := NewValidator()
+	v.Check(req.Name != "", "name", "must be provided")
+	v.Check(req.Location != "", "location", "must be provided")
+
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+}

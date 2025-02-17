@@ -8,7 +8,8 @@ VALUES
 ('users:read'),
 ('users:create'),
 ('users:update'),
-('users:delete');
+('users:delete')
+ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS users_permissions (
     user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
