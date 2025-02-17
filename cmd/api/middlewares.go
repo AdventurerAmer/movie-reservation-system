@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 )
 
@@ -31,7 +32,7 @@ func (app *Application) authenticate(next http.HandlerFunc) http.HandlerFunc {
 		token := parts[1]
 		u, err := app.storage.GetUserFromToken(TokenScopeAuthentication, token)
 		if err != nil {
-			writeServerErr(w)
+			writeServerErr(err, w)
 			return
 		}
 		if u == nil {
@@ -42,6 +43,28 @@ func (app *Application) authenticate(next http.HandlerFunc) http.HandlerFunc {
 		ctx := context.WithValue(r.Context(), UserRequestContextKey, u)
 		r = r.WithContext(ctx)
 
+		next.ServeHTTP(w, r)
+	}
+}
+
+func (app *Application) authorize(permissions []Permission, next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := getUserFromRequestContext(r)
+		if u == nil {
+			writeServerErr(errors.New("users must be authenticated"), w)
+			return
+		}
+		has, err := app.storage.GetPermissions(u.ID)
+		if err != nil {
+			writeServerErr(err, w)
+			return
+		}
+		for _, p := range permissions {
+			if !slices.Contains(has, p) {
+				writeForbidden(w)
+				return
+			}
+		}
 		next.ServeHTTP(w, r)
 	}
 }

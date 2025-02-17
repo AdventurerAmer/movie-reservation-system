@@ -3,10 +3,29 @@ package main
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"embed"
 	"encoding/base32"
 	"fmt"
+	"html/template"
 	"time"
 )
+
+//go:embed templates
+var Templates embed.FS
+var ActivateUserTmpl *template.Template
+var ResetPasswordTempl *template.Template
+
+func init() {
+	var err error
+	ActivateUserTmpl, err = template.ParseFS(Templates, "templates/activate_user.gotmpl")
+	if err != nil {
+		panic(err)
+	}
+	ResetPasswordTempl, err = template.ParseFS(Templates, "templates/reset_password.gotmpl")
+	if err != nil {
+		panic(err)
+	}
+}
 
 type User struct {
 	ID           int64     `json:"id"`
@@ -57,3 +76,5 @@ func hashToken(token string) []byte {
 	hash := sha256.Sum256([]byte(token))
 	return hash[:]
 }
+
+type Permission string

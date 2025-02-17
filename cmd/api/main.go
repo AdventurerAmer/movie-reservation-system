@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"embed"
 	"errors"
 	"fmt"
 	"log"
@@ -18,9 +17,6 @@ import (
 )
 
 const Version = "1.0.0"
-
-//go:embed templates
-var Templates embed.FS
 
 type Config struct {
 	port        int
@@ -45,17 +41,7 @@ type Application struct {
 	quit    chan struct{}
 }
 
-func (app *Application) Go(fn func()) {
-	app.wg.Add(1)
-	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				log.Println(err)
-			}
-			app.wg.Done()
-		}()
-		fn()
-	}()
+func init() {
 }
 
 func main() {
@@ -186,10 +172,12 @@ func loadConfig() (Config, error) {
 	if cfg.smtp.username == "" {
 		return Config{}, fmt.Errorf(`environment variable "SMTP_USERNAME" is not specified`)
 	}
+
 	cfg.smtp.password = os.Getenv("SMTP_PASSWORD")
 	if cfg.smtp.password == "" {
 		return Config{}, fmt.Errorf(`environment variable "SMTP_PASSWORD" is not specified`)
 	}
+
 	cfg.smtp.sender = os.Getenv("SMTP_SENDER")
 	if cfg.smtp.sender == "" {
 		return Config{}, fmt.Errorf(`environment variable "SMTP_SENDER" is not specified`)

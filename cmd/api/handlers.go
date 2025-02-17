@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"log"
 	"net/http"
+	"runtime/debug"
 	"strconv"
 	"time"
 
@@ -59,7 +59,7 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 
 	u, err := app.storage.GetUserByEmail(*req.Email)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
@@ -73,7 +73,7 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
@@ -86,20 +86,14 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 	token := generateToken()
 	_, err = app.storage.CreateTokenForUser(user.ID, TokenScopeActivation, token, 10*time.Minute)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
-	app.Go(func() {
-		tmpl, err := template.ParseFS(Templates, "templates/activate_user.gotmpl")
-		if err != nil {
-			panic(err)
-		}
-		data := map[string]any{
-			"token": token,
-		}
-		app.mailer.Send(u.Email, tmpl, data)
-	})
+	data := map[string]any{
+		"token": token,
+	}
+	app.Go(app.SendMail(user.Email, ActivateUserTmpl, data))
 
 	res := map[string]any{
 		"user":    user,
@@ -116,7 +110,7 @@ func (app *Application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	u := getUserFromRequestContext(r)
 	if u == nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 	if u.ID != int64(id) {
@@ -153,7 +147,7 @@ func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request
 
 	u := getUserFromRequestContext(r)
 	if u == nil {
-		writeServerErr(w)
+		writeServerErr(errors.New("user must be authenticated"), w)
 		return
 	}
 
@@ -168,7 +162,7 @@ func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request
 
 	err = app.storage.UpdateUser(u)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
@@ -187,7 +181,7 @@ func (app *Application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 
 	u := getUserFromRequestContext(r)
 	if u == nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
@@ -198,7 +192,7 @@ func (app *Application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 
 	err = app.storage.DeleteUser(u)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 	res := map[string]any{
@@ -228,7 +222,7 @@ func (app *Application) createUserActivationTokenHandler(w http.ResponseWriter, 
 	u, err := app.storage.GetUserByEmail(*req.Email)
 	if err != nil {
 		log.Println(err)
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 	if u == nil {
@@ -245,7 +239,7 @@ func (app *Application) createUserActivationTokenHandler(w http.ResponseWriter, 
 
 	err = app.storage.DeleteAllTokensForUser(u.ID, []TokenScope{TokenScopeActivation})
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
@@ -253,20 +247,14 @@ func (app *Application) createUserActivationTokenHandler(w http.ResponseWriter, 
 	_, err = app.storage.CreateTokenForUser(u.ID, TokenScopeActivation, token, 10*time.Minute)
 	if err != nil {
 		log.Println(err)
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
-	app.Go(func() {
-		tmpl, err := template.ParseFS(Templates, "templates/activate_user.gotmpl")
-		if err != nil {
-			panic(err)
-		}
-		data := map[string]any{
-			"token": token,
-		}
-		app.mailer.Send(u.Email, tmpl, data)
-	})
+	data := map[string]any{
+		"token": token,
+	}
+	app.Go(app.SendMail(u.Email, ActivateUserTmpl, data))
 
 	res := map[string]any{
 		"message": "activation token was send to the provided email",
@@ -285,7 +273,7 @@ func (app *Application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	u, err := app.storage.GetUserFromToken(TokenScopeActivation, req.Token)
 	if err != nil {
 		log.Println(err)
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 	if u == nil {
@@ -302,7 +290,7 @@ func (app *Application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 	err = app.storage.UpdateUser(u)
 	if err != nil {
 		log.Println(err)
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
@@ -330,7 +318,7 @@ func (app *Application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 	}
 	u, err := app.storage.GetUserByEmail(*req.Email)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 	if u == nil {
@@ -344,14 +332,14 @@ func (app *Application) createAuthenticationTokenHandler(w http.ResponseWriter, 
 
 	err = app.storage.DeleteAllTokensForUser(u.ID, []TokenScope{TokenScopeAuthentication})
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
 	token := generateToken()
 	_, err = app.storage.CreateTokenForUser(u.ID, TokenScopeAuthentication, token, 24*time.Hour)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 	res := map[string]any{
@@ -380,7 +368,7 @@ func (app *Application) createPasswordResetTokenHandler(w http.ResponseWriter, r
 
 	u, err := app.storage.GetUserByEmail(*req.Email)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 	if u == nil {
@@ -391,28 +379,21 @@ func (app *Application) createPasswordResetTokenHandler(w http.ResponseWriter, r
 
 	err = app.storage.DeleteAllTokensForUser(u.ID, []TokenScope{TokenScopePasswordReset})
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
 	token := generateToken()
 	_, err = app.storage.CreateTokenForUser(u.ID, TokenScopePasswordReset, token, 10*time.Minute)
 	if err != nil {
-		log.Println(err)
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
-	app.Go(func() {
-		tmpl, err := template.ParseFS(Templates, "templates/reset_password.gotmpl")
-		if err != nil {
-			panic(err)
-		}
-		data := map[string]any{
-			"token": token,
-		}
-		app.mailer.Send(u.Email, tmpl, data)
-	})
+	data := map[string]any{
+		"token": token,
+	}
+	app.Go(app.SendMail(u.Email, ResetPasswordTempl, data))
 
 	res := map[string]any{
 		"message": "password token was send to the provided email",
@@ -441,7 +422,7 @@ func (app *Application) resetPasswordHandler(w http.ResponseWriter, r *http.Requ
 	}
 	u, err := app.storage.GetUserFromToken(TokenScopePasswordReset, *req.Token)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 	if u == nil {
@@ -451,20 +432,20 @@ func (app *Application) resetPasswordHandler(w http.ResponseWriter, r *http.Requ
 
 	err = app.storage.DeleteAllTokensForUser(u.ID, []TokenScope{TokenScopePasswordReset, TokenScopeAuthentication})
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
 	u.PasswordHash = passwordHash
 	err = app.storage.UpdateUser(u)
 	if err != nil {
-		writeServerErr(w)
+		writeServerErr(err, w)
 		return
 	}
 
@@ -549,7 +530,8 @@ func writeBadRequest(err error, w http.ResponseWriter) {
 	writeError(err, http.StatusBadRequest, w)
 }
 
-func writeServerErr(w http.ResponseWriter) {
+func writeServerErr(err error, w http.ResponseWriter) {
+	log.Printf("%v\n%v\n", err, debug.Stack())
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write(InternalServerErrorBuf.Bytes())
