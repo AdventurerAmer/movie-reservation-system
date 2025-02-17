@@ -34,14 +34,12 @@ type Config struct {
 }
 
 type Application struct {
-	config  Config
-	storage *Storage
-	mailer  *Mailer
-	wg      sync.WaitGroup
-	quit    chan struct{}
-}
-
-func init() {
+	config     Config
+	storage    *Storage
+	mailer     *Mailer
+	wg         sync.WaitGroup
+	servicesCh chan ServiceFunc
+	quit       chan struct{}
 }
 
 func main() {
@@ -61,35 +59,30 @@ func main() {
 	log.Println("Connected to database")
 
 	app := &Application{
-		config:  cfg,
-		storage: storage,
-		mailer:  NewMailer(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
-		quit:    make(chan struct{}),
+		config:     cfg,
+		storage:    storage,
+		mailer:     NewMailer(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
+		servicesCh: make(chan ServiceFunc),
+		quit:       make(chan struct{}),
 	}
 
-	// TODO: we want some kind of a heartbeat system here to make sure we spawn a new goroutine if this one panics
-	// but it's only executing one db delete query so there is a low change that it will actually panic
 	app.Go(func() {
-		ticker := time.NewTicker(time.Minute)
+		log.Println("Started services manager")
 	loop:
 		for {
 			select {
-			case <-ticker.C:
-				log.Println("tokens background ticked")
-				n, err := app.storage.DeleteAllExpiredTokens()
-				if err != nil {
-					log.Println(err)
-				} else if n != 0 {
-					log.Printf("tokens background deleted: %d tokens\n", n)
-				}
+			case fn := <-app.servicesCh:
+				app.launchService(fn)
 			case _, open := <-app.quit:
 				if !open {
 					break loop
 				}
 			}
 		}
-		log.Println("tokens background was shut down gracefully")
+		log.Println("Services manager was shut down gracefully")
 	})
+
+	app.StartService(app.TokensService(time.Minute))
 
 	addr := fmt.Sprintf(":%d", cfg.port)
 	srv := http.Server{
