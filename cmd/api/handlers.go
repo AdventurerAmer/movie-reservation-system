@@ -10,6 +10,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -502,6 +503,10 @@ func (app *Application) getMovieHandler(w http.ResponseWriter, r *http.Request) 
 		writeServerErr(err, w)
 		return
 	}
+	if m == nil {
+		writeNotFound(w)
+		return
+	}
 	res := map[string]any{
 		"movie": m,
 	}
@@ -521,7 +526,7 @@ func (app *Application) getMoviesHandler(w http.ResponseWriter, r *http.Request)
 	v.Check(pageSize > 0 && pageSize <= 100, "page_size", "must be between 1 and 100")
 
 	sortList := []string{"id", "-id", "title", "-title", "year", "-year", "runtime", "-runtime"}
-	v.Check(slices.Contains(sortList, sort), "sort", "not supported")
+	v.Check(slices.Contains(sortList, sort), fmt.Sprintf("sort-%s", sort), "not supported")
 
 	if v.HasErrors() {
 		writeErrors(v, w)
@@ -635,7 +640,7 @@ func (app *Application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 	writeJSON(res, http.StatusOK, w)
 }
 
-func (app *Application) createCinemasHandler(w http.ResponseWriter, r *http.Request) {
+func (app *Application) createCinemaHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name     string `json:"name"`
 		Location string `json:"location"`
@@ -653,4 +658,550 @@ func (app *Application) createCinemasHandler(w http.ResponseWriter, r *http.Requ
 		writeErrors(v, w)
 		return
 	}
+
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user not authenticated"), w)
+		return
+	}
+
+	c, err := app.storage.CreateCinema(u.ID, req.Name, req.Location)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+
+	res := map[string]any{
+		"cinema": c,
+	}
+	writeJSON(res, http.StatusCreated, w)
+}
+
+func (app *Application) getCinemaHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	c, err := app.storage.GetCinemaByID(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if c == nil {
+		writeNotFound(w)
+		return
+	}
+	res := map[string]any{
+		"cinema": c,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) getCinemasHandler(w http.ResponseWriter, r *http.Request) {
+	v := NewValidator()
+
+	name := QueryStringOr(r, "name", "")
+	location := QueryStringOr(r, "location", "")
+	page := QueryIntOr(r, "page", 1, v)
+	pageSize := QueryIntOr(r, "page_size", 20, v)
+	sort := QueryStringOr(r, "sort", "id")
+
+	v.Check(page > 0 && page <= 10_000_000, "page", "must be between 1 and 10_000_000")
+	v.Check(pageSize > 0 && pageSize <= 100, "page_size", "must be between 1 and 100")
+
+	sortList := []string{"id", "-id", "name", "-name", "location", "-location"}
+	v.Check(slices.Contains(sortList, sort), fmt.Sprintf("sort-%s", sort), "not supported")
+
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+
+	cinemas, meta, err := app.storage.GetCinemas(name, location, page, pageSize, sort)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"cinemas": cinemas,
+		"meta":    meta,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) updateCinemaHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	var req struct {
+		Name     *string `json:"name"`
+		Location *string `json:"location"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+
+	v := NewValidator()
+	if req.Name != nil {
+		v.Check(*req.Name != "", "name", "must be provided")
+	}
+	if req.Location != nil {
+		v.Check(*req.Location != "location", "location", "must be provided")
+	}
+	v.Check(req.Name != nil || req.Location != nil, "name or location", "must be provided")
+
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+
+	c, err := app.storage.GetCinemaByID(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if c == nil {
+		writeNotFound(w)
+		return
+	}
+
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+
+	if req.Name != nil {
+		c.Name = *req.Name
+	}
+
+	if req.Location != nil {
+		c.Location = *req.Location
+	}
+
+	err = app.storage.UpdateCinema(c)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+
+	res := map[string]any{
+		"cinema": c,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) deleteCinemaHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	c, err := app.storage.GetCinemaByID(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if c == nil {
+		writeNotFound(w)
+		return
+	}
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+	err = app.storage.DeleteCinema(c)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"message": "resource deleted successfully",
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) createHallHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+
+	var req struct {
+		Name               string          `json:"name"`
+		SeatingArrangement string          `json:"seat_arrangement"`
+		SeatPrice          decimal.Decimal `json:"seat_price"`
+	}
+
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+
+	v := NewValidator()
+	v.Check(req.Name != "", "name", "must be provided")
+	v.Check(req.SeatingArrangement != "", "seat_arrangement", "must be provided")
+	v.Check(req.SeatPrice.GreaterThan(decimal.Zero), "seat_price", "must be greater than zero")
+
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	c, err := app.storage.GetCinemaByID(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if c == nil {
+		writeNotFound(w)
+		return
+	}
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+	h, err := app.storage.CreateHall(req.Name, c.ID, req.SeatingArrangement, req.SeatPrice)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"hall": h,
+	}
+	writeJSON(res, http.StatusCreated, w)
+}
+
+func (app *Application) getHallHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	h, err := app.storage.GetHallByID(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if h == nil {
+		writeNotFound(w)
+		return
+	}
+	res := map[string]any{
+		"hall": h,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) getHallsHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	halls, err := app.storage.GetHallsForCinema(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"halls": halls,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) updateHallHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	var req struct {
+		Name               *string          `json:"name"`
+		SeatingArrangement *string          `json:"seating_arrangement"`
+		SeatPrice          *decimal.Decimal `json:"seat_price"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	v := NewValidator()
+	if req.Name != nil {
+		v.Check(*req.Name != "", "name", "must be provided")
+	}
+	if req.SeatingArrangement != nil {
+		v.Check(*req.SeatingArrangement != "", "seating_arrangement", "must be provided")
+	}
+	if req.SeatPrice != nil {
+		v.Check(req.SeatPrice.GreaterThan(decimal.Zero), "seat_price", "must be provided")
+	}
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	h, c, err := app.storage.GetHallCinema(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if h == nil {
+		writeNotFound(w)
+		return
+	}
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+	if req.Name != nil {
+		h.Name = *req.Name
+	}
+	if req.SeatingArrangement != nil {
+		h.SeatingArrangement = *req.SeatingArrangement
+	}
+	if req.SeatPrice != nil {
+		h.SeatPrice = *req.SeatPrice
+	}
+	err = app.storage.UpdateHall(h)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"hall": h,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) deleteHallHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	h, c, err := app.storage.GetHallCinema(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if h == nil {
+		writeNotFound(w)
+		return
+	}
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+	err = app.storage.DeleteHall(h)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"message": "resource deleted successfully",
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) createSeatHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	var req struct {
+		Coordinates string `json:"coordinates"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	v := NewValidator()
+	v.Check(req.Coordinates != "", "coordinates", "must be provided")
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	h, c, err := app.storage.GetHallCinema(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if h == nil {
+		writeNotFound(w)
+		return
+	}
+	if c.OwnerID != c.OwnerID {
+		writeForbidden(w)
+		return
+	}
+	seat, err := app.storage.CreateSeat(int32(id), req.Coordinates)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"seat": seat,
+	}
+	writeJSON(res, http.StatusCreated, w)
+}
+
+func (app *Application) getSeatHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	s, err := app.storage.GetSeatByID(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if s == nil {
+		writeNotFound(w)
+		return
+	}
+	res := map[string]any{
+		"seat": s,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) getSeatsHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	seats, err := app.storage.GetSeatsForHall(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"seats": seats,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) updateSeatHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	var req struct {
+		Coordinates string `json:"coordinates"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	v := NewValidator()
+	v.Check(req.Coordinates != "", "coordinates", "must be provided")
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+
+	c, _, s, err := app.storage.GetCinemaHallSeat(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if c == nil {
+		writeNotFound(w)
+		return
+	}
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+
+	s.Coordinates = req.Coordinates
+	err = app.storage.UpdateSeat(s)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"seat": s,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) deleteSeatHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+
+	c, _, s, err := app.storage.GetCinemaHallSeat(int32(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if c == nil {
+		writeNotFound(w)
+		return
+	}
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+
+	err = app.storage.DeleteSeat(s)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"message": "resouce delete successfully",
+	}
+	writeJSON(res, http.StatusOK, w)
 }

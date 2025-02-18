@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS cinemas (
     id serial PRIMARY KEY,
     name text NOT NULL,
     location text NOT NULL,
-    ower_id bigint NOT NULL REFERENCES users(id),
+    owner_id bigint NOT NULL REFERENCES users(id),
     version int NOT NULL DEFAULT 1
 );
 
@@ -17,13 +17,13 @@ CREATE TABLE IF NOT EXISTS halls (
 
 CREATE TABLE IF NOT EXISTS seats (
     id serial PRIMARY KEY,
-    location text NOT NULL,
+    coordinates text NOT NULL,
     hall_id int NOT NULL REFERENCES halls(id),
     version int NOT NULL DEFAULT 1  
 );
 
-CREATE INDEX IF NOT EXISTS cinemas_name_idx ON movies USING GIN (to_tsvector('simple', name));
-CREATE INDEX IF NOT EXISTS cinemas_location_idx ON movies USING GIN (to_tsvector('simple', location));
+CREATE INDEX IF NOT EXISTS cinemas_name_idx ON cinemas USING GIN (to_tsvector('simple', name));
+CREATE INDEX IF NOT EXISTS cinemas_location_idx ON cinemas USING GIN (to_tsvector('simple', location));
 
 INSERT INTO permissions(code)
 VALUES

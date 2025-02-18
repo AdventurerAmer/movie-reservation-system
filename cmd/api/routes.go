@@ -24,5 +24,21 @@ func composeRoutes(app *Application) http.Handler {
 	mux.HandleFunc("PUT /v1/movies/{id}", app.updateMovieHandler)
 	mux.HandleFunc("DELETE /v1/movies/{id}", app.deleteMovieHandler)
 
+	mux.HandleFunc("POST /v1/cinemas", app.authenticate(app.createCinemaHandler))
+	mux.HandleFunc("GET /v1/cinemas/{id}", app.getCinemaHandler)
+	mux.HandleFunc("GET /v1/cinemas", app.getCinemasHandler)
+	mux.HandleFunc("PUT /v1/cinemas/{id}", app.authenticate(app.updateCinemaHandler))
+	mux.HandleFunc("DELETE /v1/cinemas/{id}", app.authenticate(app.deleteCinemaHandler))
+
+	mux.HandleFunc("POST /v1/cinemas/{id}/halls", app.authenticate(app.createHallHandler))
+	mux.HandleFunc("GET /v1/cinemas/{id}/halls", app.getHallsHandler)
+	mux.HandleFunc("PUT /v1/cinemas/halls/{id}", app.authenticate(app.updateHallHandler))
+	mux.HandleFunc("DELETE /v1/cinemas/halls/{id}", app.authenticate(app.deleteHallHandler))
+
+	mux.HandleFunc("POST /v1/cinemas/halls/{id}/seats", app.authenticate(app.createSeatHandler))
+	mux.HandleFunc("GET /v1/cinemas/halls/{id}/seats", app.getSeatsHandler)
+	mux.HandleFunc("PUT /v1/cinemas/halls/seats/{id}", app.authenticate(app.updateSeatHandler))
+	mux.HandleFunc("DELETE /v1/cinemas/halls/seats/{id}", app.authenticate(app.deleteSeatHandler))
+
 	return mux
 }

@@ -117,8 +117,8 @@ type Hall struct {
 }
 
 type Seat struct {
-	ID       int32  `json:"id"`
-	Location string `json:"location"`
-	HallID   int32  `json:"hall_id"`
-	Version  int32  `json:"version"`
+	ID          int32  `json:"id"`
+	Coordinates string `json:"coordinates"`
+	HallID      int32  `json:"hall_id"`
+	Version     int32  `json:"version"`
 }
