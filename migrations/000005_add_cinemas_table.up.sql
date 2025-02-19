@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS halls (
     id serial PRIMARY KEY,
     name text NOT NULL,
     cinema_id int NOT NULL REFERENCES cinemas(id),
-    seating_arrangement text NOT NULL,
+    seat_arrangement text NOT NULL,
     seat_price decimal(6, 2) NOT NULL,
     version int NOT NULL DEFAULT 1
 );

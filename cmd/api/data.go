@@ -108,12 +108,12 @@ type Cinema struct {
 }
 
 type Hall struct {
-	ID                 int32           `json:"id"`
-	Name               string          `json:"name"`
-	CinemaID           int32           `json:"cinema_id"`
-	SeatingArrangement string          `json:"seating_arrangement"`
-	SeatPrice          decimal.Decimal `json:"seat_price"`
-	Version            int32           `json:"version"`
+	ID              int32           `json:"id"`
+	Name            string          `json:"name"`
+	CinemaID        int32           `json:"cinema_id"`
+	SeatArrangement string          `json:"seat_arrangement"`
+	SeatPrice       decimal.Decimal `json:"seat_price"`
+	Version         int32           `json:"version"`
 }
 
 type Seat struct {

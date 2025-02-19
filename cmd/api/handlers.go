@@ -937,9 +937,9 @@ func (app *Application) updateHallHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	var req struct {
-		Name               *string          `json:"name"`
-		SeatingArrangement *string          `json:"seating_arrangement"`
-		SeatPrice          *decimal.Decimal `json:"seat_price"`
+		Name            *string          `json:"name"`
+		SeatArrangement *string          `json:"seat_arrangement"`
+		SeatPrice       *decimal.Decimal `json:"seat_price"`
 	}
 	if err := readJSON(r, &req); err != nil {
 		writeBadRequest(err, w)
@@ -949,8 +949,8 @@ func (app *Application) updateHallHandler(w http.ResponseWriter, r *http.Request
 	if req.Name != nil {
 		v.Check(*req.Name != "", "name", "must be provided")
 	}
-	if req.SeatingArrangement != nil {
-		v.Check(*req.SeatingArrangement != "", "seating_arrangement", "must be provided")
+	if req.SeatArrangement != nil {
+		v.Check(*req.SeatArrangement != "", "seat_arrangement", "must be provided")
 	}
 	if req.SeatPrice != nil {
 		v.Check(req.SeatPrice.GreaterThan(decimal.Zero), "seat_price", "must be provided")
@@ -980,8 +980,8 @@ func (app *Application) updateHallHandler(w http.ResponseWriter, r *http.Request
 	if req.Name != nil {
 		h.Name = *req.Name
 	}
-	if req.SeatingArrangement != nil {
-		h.SeatingArrangement = *req.SeatingArrangement
+	if req.SeatArrangement != nil {
+		h.SeatArrangement = *req.SeatArrangement
 	}
 	if req.SeatPrice != nil {
 		h.SeatPrice = *req.SeatPrice

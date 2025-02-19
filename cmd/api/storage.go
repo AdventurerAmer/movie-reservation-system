@@ -515,10 +515,10 @@ func (s *Storage) CreateHall(name string, cinemaID int32, seatArrangement string
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
 	h := Hall{
-		Name:               name,
-		CinemaID:           cinemaID,
-		SeatingArrangement: seatArrangement,
-		SeatPrice:          seatPrice,
+		Name:            name,
+		CinemaID:        cinemaID,
+		SeatArrangement: seatArrangement,
+		SeatPrice:       seatPrice,
 	}
 	query := `INSERT INTO halls(name, cinema_id, seat_arrangement, seat_price)
 	          VALUES ($1, $2, $3, $4)
@@ -541,7 +541,7 @@ func (s *Storage) GetHallByID(id int32) (*Hall, error) {
 			  FROM halls
 	          WHERE id = $1`
 	args := []any{id}
-	err := s.db.QueryRowContext(ctx, query, args...).Scan(&h.Name, &h.CinemaID, &h.SeatingArrangement, &h.SeatPrice, &h.Version)
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&h.Name, &h.CinemaID, &h.SeatArrangement, &h.SeatPrice, &h.Version)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -564,7 +564,7 @@ func (s *Storage) GetHallCinema(hallID int32) (*Hall, *Cinema, error) {
 			  ON c.id = h.cinema_id
 	          WHERE h.id = $1`
 	args := []any{hallID}
-	err := s.db.QueryRowContext(ctx, query, args...).Scan(&h.Name, &h.CinemaID, &h.SeatingArrangement, &h.SeatPrice, &h.Version, &c.ID, &c.Location, &c.OwnerID, &c.Version)
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&h.Name, &h.CinemaID, &h.SeatArrangement, &h.SeatPrice, &h.Version, &c.ID, &c.Location, &c.OwnerID, &c.Version)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, nil
@@ -603,7 +603,7 @@ func (s *Storage) GetHallsForCinema(cinemaID int32) ([]Hall, error) {
 		h := Hall{
 			CinemaID: cinemaID,
 		}
-		err = rows.Scan(&h.ID, &h.Name, &h.SeatingArrangement, &h.SeatPrice, &h.Version)
+		err = rows.Scan(&h.ID, &h.Name, &h.SeatArrangement, &h.SeatPrice, &h.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -620,10 +620,10 @@ func (s *Storage) UpdateHall(h *Hall) error {
 	defer cancel()
 
 	query := `UPDATE halls
-	          SET name = $1, seating_arrangement = $2, seat_price = $3, version = version + 1
+	          SET name = $1, seat_arrangement = $2, seat_price = $3, version = version + 1
 			  WHERE id = $4 AND version = $5
 			  RETURNING version`
-	args := []any{h.Name, h.SeatingArrangement, h.SeatPrice, h.ID, h.Version}
+	args := []any{h.Name, h.SeatArrangement, h.SeatPrice, h.ID, h.Version}
 	err := s.db.QueryRowContext(ctx, query, args...).Scan(&h.Version)
 	return err
 }
@@ -727,11 +727,11 @@ func (s *Storage) GetCinemaHallSeat(seatID int32) (*Cinema, *Hall, *Seat, error)
 	          FROM seats as s
 			  INNER JOIN halls as h
 			  ON s.hall_id = h.id
-			  INNSER JOIN cinemas as c
+			  INNER JOIN cinemas as c
 			  ON c.id = h.cinema_id
 			  WHERE s.id = $1`
 	args := []any{seatID}
-	err := s.db.QueryRowContext(ctx, query, args...).Scan(&seat.HallID, &seat.Coordinates, &seat.Version, &h.Name, &h.CinemaID, &h.SeatingArrangement, &h.SeatPrice, &h.Version, &c.ID, &c.Location, &c.OwnerID, &c.Version)
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&seat.HallID, &seat.Coordinates, &seat.Version, &h.Name, &h.CinemaID, &h.SeatArrangement, &h.SeatPrice, &h.Version, &c.ID, &c.Location, &c.OwnerID, &c.Version)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, nil, nil
@@ -757,7 +757,7 @@ func (s *Storage) DeleteSeat(seat *Seat) error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
 	query := `DELETE FROM seats
-			  WHERE id = $2 AND version = $3`
+			  WHERE id = $1 AND version = $2`
 	args := []any{seat.ID, seat.Version}
 	_, err := s.db.ExecContext(ctx, query, args...)
 	return err
