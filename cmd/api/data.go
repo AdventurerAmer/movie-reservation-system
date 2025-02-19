@@ -122,3 +122,14 @@ type Seat struct {
 	HallID      int32  `json:"hall_id"`
 	Version     int32  `json:"version"`
 }
+
+type Schedule struct {
+	ID        int64           `json:"id"`
+	CreatedAt time.Time       `json:"created_at"`
+	MovieID   int64           `json:"movie_id"`
+	HallID    int32           `json:"hall_id"`
+	Price     decimal.Decimal `json:"price"`
+	StartsAt  time.Time       `json:"starts_at"`
+	EndsAt    time.Time       `json:"ends_at"`
+	Version   int32           `json:"version"`
+}

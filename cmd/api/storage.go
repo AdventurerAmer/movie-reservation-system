@@ -762,3 +762,135 @@ func (s *Storage) DeleteSeat(seat *Seat) error {
 	_, err := s.db.ExecContext(ctx, query, args...)
 	return err
 }
+
+func (s *Storage) CreateSchedule(movieID int64, hallID int32, price decimal.Decimal, startsAt time.Time, endsAt time.Time) (*Schedule, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	schedule := Schedule{
+		MovieID:  movieID,
+		HallID:   hallID,
+		Price:    price,
+		StartsAt: startsAt,
+		EndsAt:   endsAt,
+	}
+	query := `INSERT INTO schedules(movie_id, hall_id, price, starts_at, ends_at)
+	          VALUES ($1, $2, $3, $4, $5)
+			  RETURNING id, version`
+	args := []any{movieID, hallID, price, startsAt, endsAt}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&schedule.ID, &schedule.Version)
+	if err != nil {
+		return nil, err
+	}
+	return &schedule, nil
+}
+
+func (s *Storage) GetSchedule(movieID int64, hallID int32, starts_at time.Time, ends_at time.Time) (*Schedule, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	schedule := Schedule{
+		MovieID: movieID,
+		HallID:  hallID,
+	}
+	query := `SELECT id, created_at, price, starts_at, ends_at, version
+	          FROM schedules
+			  WHERE id = $1 AND hall_id = $2 AND ((starts_at >= $1 AND starts_at <= $2) OR (ends >= $1 AND ends <= $2))`
+	args := []any{movieID, hallID, starts_at, ends_at}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&schedule.ID, &schedule.CreatedAt, &schedule.StartsAt, &schedule.EndsAt, &schedule.Version)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &schedule, nil
+}
+
+func (s *Storage) GetSchedules(movieID int64, hallID int32, sort string, page int, pageSize int) ([]Schedule, *MetaData, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+
+	op := "ASC"
+	if strings.HasPrefix(sort, "-") {
+		sort = strings.TrimPrefix(sort, "-")
+		op = "DESC"
+	}
+
+	order := ""
+	if sort == "id" {
+		order = fmt.Sprintf("id %s", op)
+	} else {
+		order = fmt.Sprintf("%s %s, id ASC", sort, op)
+	}
+
+	query := fmt.Sprintf(`SELECT count(*) OVER(), id, movie_id, halld_id, created_at, price, starts_at, ends_at, version
+						  FROM schedules
+						  WHERE movie_id = $1 AND halld_id = $2 AND NOW() > starts_at
+						  ORDER BY %s
+						  OFFSET $3 LIMIT $4`, order)
+
+	limit := pageSize
+	offset := (page - 1) * pageSize
+	args := []any{movieID, hallID, limit, offset}
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil, nil
+		}
+		return nil, nil, err
+	}
+	defer func() {
+		err = rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+
+	totalRecords := 0
+	var schedules []Schedule
+
+	for rows.Next() {
+		var schedule Schedule
+		err := rows.Scan(&totalRecords, &schedule.ID, &schedule.MovieID, &schedule.HallID, &schedule.CreatedAt, &schedule.Price, &schedule.StartsAt, &schedule.EndsAt, &schedule.Version)
+		if err != nil {
+			return nil, nil, err
+		}
+		schedules = append(schedules, schedule)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, nil, err
+	}
+	metaData := &MetaData{}
+	if totalRecords != 0 {
+		metaData = &MetaData{
+			CurrentPage:  page,
+			PageSize:     pageSize,
+			FirstPage:    1,
+			LastPage:     int(math.Ceil(float64(totalRecords) / float64(pageSize))),
+			TotalRecords: totalRecords,
+		}
+	}
+	return schedules, metaData, nil
+}
+
+func (s *Storage) UpdateSchedule(schedule *Schedule) error {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `UPDATE schedules
+	          SET movie_id = $1, hall_id = $2, price = $3, starts_at = $4, ends_at = $5, version = version + 1 
+			  WHERE id = $6 AND version = $7
+			  RETURNING version`
+	args := []any{schedule.MovieID, schedule.HallID, schedule.Price, schedule.StartsAt, schedule.EndsAt, schedule.ID, schedule.Version}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&schedule.Version)
+	return err
+}
+
+func (s *Storage) DeleteSchedule(schedule *Schedule) error {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `DELETE FROM schedules
+	          WHERE id = $1 AND version = $2`
+	args := []any{schedule.ID, schedule.Version}
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
+}
