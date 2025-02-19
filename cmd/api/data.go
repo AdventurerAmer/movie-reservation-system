@@ -133,3 +133,34 @@ type Schedule struct {
 	EndsAt    time.Time       `json:"ends_at"`
 	Version   int32           `json:"version"`
 }
+
+type TicketState int16
+
+const (
+	TicketStateUnsold TicketState = iota
+	TicketStateLocked
+	TicketStateSold
+)
+
+func (s TicketState) String() string {
+	switch s {
+	case TicketStateUnsold:
+		return "Unsold"
+	case TicketStateLocked:
+		return "Locked"
+	case TicketStateSold:
+		return "Sold"
+	}
+	return fmt.Sprintf("TicketState %d", s)
+}
+
+type Ticket struct {
+	ID             int64           `json:"id"`
+	CreatedAt      time.Time       `json:"created_at"`
+	ScheduleID     int64           `json:"schedule_id"`
+	SeatID         int32           `json:"seat_id"`
+	Price          decimal.Decimal `json:"price"`
+	StateID        TicketState     `json:"state_id"`
+	StateChangedAt time.Time       `json:"state_changed_at"`
+	Version        int32           `json:"version"`
+}

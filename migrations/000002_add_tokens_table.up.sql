@@ -8,7 +8,7 @@ VALUES
     (0, 'activation'),
     (1, 'authentication'),
     (2, 'password-reset')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS tokens (
     id bigserial PRIMARY KEY,

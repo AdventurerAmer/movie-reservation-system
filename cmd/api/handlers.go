@@ -1450,3 +1450,202 @@ func (app *Application) deleteScheduleHandler(w http.ResponseWriter, r *http.Req
 	}
 	writeJSON(res, http.StatusOK, w)
 }
+
+func (app *Application) createTicketsForScheduleHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	v := NewValidator()
+	v.Check(id > 0, "id", "must be provided")
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	s, err := app.storage.GetScheduleByID(int64(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if s == nil {
+		writeNotFound(w)
+		return
+	}
+	n, err := app.storage.CreateTicketsForSchedule(s)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"message":      "created tickets successfully",
+		"ticket_count": n,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) getTicketsForScheduleHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	v := NewValidator()
+	v.Check(id > 0, "id", "must be provided")
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	tickets, err := app.storage.GetTicketsForSchedule(int64(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"tickets": tickets,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) updateTicketHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	var req struct {
+		StateID *TicketState `json:"state_id"`
+	}
+	if err := readJSON(r, &req); err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	v := NewValidator()
+	v.Check(id > 0, "id", "must be provided")
+	v.Check(req.StateID != nil, "state_id", "must be provided")
+	validStates := []TicketState{TicketStateUnsold, TicketStateLocked, TicketStateSold}
+	if req.StateID != nil {
+		v.Check(slices.Contains(validStates, *req.StateID), "state_id", "unsupported")
+	}
+	if v.HasErrors() {
+		writeErrors(v, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	t, err := app.storage.GetTicketByID(int64(id))
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	if t == nil {
+		writeNotFound(w)
+		return
+	}
+
+	if t.StateID == TicketStateSold {
+		res := map[string]any{
+			"message": "invalid ticket state transform",
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
+	if *req.StateID == TicketStateLocked && t.StateID != TicketStateUnsold {
+		res := map[string]any{
+			"message": "invalid ticket state transform",
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
+	if *req.StateID == TicketStateSold && t.StateID != TicketStateLocked {
+		res := map[string]any{
+			"message": "invalid ticket state transform",
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
+	c, _, _, err := app.storage.GetCinemaHallSeat(t.SeatID)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+
+	t.StateID = *req.StateID
+	err = app.storage.UpdateTicket(t)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"ticket": t,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) deleteTicketHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+
+	t, err := app.storage.GetTicketByID(int64(id))
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	if t == nil {
+		writeNotFound(w)
+		return
+	}
+	if t.StateID == TicketStateSold || t.StateID == TicketStateLocked {
+		res := map[string]any{
+			"message": "ticket is sold or locked",
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
+	c, _, _, err := app.storage.GetCinemaHallSeat(t.SeatID)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+
+	if c.OwnerID != u.ID {
+		writeForbidden(w)
+		return
+	}
+
+	err = app.storage.DeleteTicket(t)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"message": "resources deleted successfully",
+	}
+	writeJSON(res, http.StatusOK, w)
+}

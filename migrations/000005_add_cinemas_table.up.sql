@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS seats (
     id serial PRIMARY KEY,
     coordinates text NOT NULL,
     hall_id int NOT NULL REFERENCES halls(id),
-    version int NOT NULL DEFAULT 1  
+    version int NOT NULL DEFAULT 1
 );
 
 CREATE INDEX IF NOT EXISTS cinemas_name_idx ON cinemas USING GIN (to_tsvector('simple', name));

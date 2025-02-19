@@ -45,5 +45,10 @@ func composeRoutes(app *Application) http.Handler {
 	mux.HandleFunc("PUT /v1/schedules/{id}", app.authenticate(app.updateScheduleHandler))
 	mux.HandleFunc("DELETE /v1/schedules/{id}", app.authenticate(app.deleteScheduleHandler))
 
+	mux.HandleFunc("POST /v1/schedules/{id}/tickets", app.authenticate(app.createTicketsForScheduleHandler))
+	mux.HandleFunc("GET /v1/schedules/{id}/tickets", app.getTicketsForScheduleHandler)
+	mux.HandleFunc("PUT /v1/tickets/{id}", app.authenticate(app.updateTicketHandler))
+	mux.HandleFunc("DELETE /v1/tickets/{id}", app.authenticate(app.deleteTicketHandler))
+
 	return mux
 }

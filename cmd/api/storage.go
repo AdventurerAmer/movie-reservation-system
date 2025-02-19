@@ -915,3 +915,101 @@ func (s *Storage) DeleteSchedule(schedule *Schedule) error {
 	_, err := s.db.ExecContext(ctx, query, args...)
 	return err
 }
+
+func (s *Storage) CreateTicketsForSchedule(schedule *Schedule) (int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `INSERT INTO tickets (schedule_id, seat_id, price) 
+	          SELECT $1, s.id, $2 + h.seat_price FROM seats as s
+	          INNER JOIN halls as h
+			  ON s.hall_id = h.id
+			  WHERE h.id = $3
+			  ON CONFLICT DO NOTHING`
+	args := []any{schedule.ID, schedule.Price, schedule.HallID}
+	result, err := s.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	n, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+	return int(n), nil
+}
+
+func (s *Storage) GetTicketByID(id int64) (*Ticket, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	t := Ticket{
+		ID: id,
+	}
+	query := `SELECT created_at, schedule_id, seat_id, price, state_id, state_changed_at, version
+	          FROM tickets
+			  WHERE id = $1`
+	args := []any{id}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&t.CreatedAt, &t.ScheduleID, &t.SeatID, &t.Price, &t.StateID, &t.StateChangedAt, &t.Version)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &t, nil
+}
+
+func (s *Storage) GetTicketsForSchedule(schedule_id int64) ([]Ticket, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `SELECT id, created_at, schedule_id, seat_id, price, state_id, state_changed_at
+	          FROM tickets
+			  WHERE schedule_id = $1`
+	args := []any{schedule_id}
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			log.Println(err)
+		}
+	}()
+	var tickets []Ticket
+	for rows.Next() {
+		var t Ticket
+		err := rows.Scan(&t.ID, &t.CreatedAt, &t.ScheduleID, &t.SeatID, &t.Price, &t.StateID, &t.StateChangedAt)
+		if err != nil {
+			return nil, err
+		}
+		tickets = append(tickets, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return tickets, nil
+}
+
+func (s *Storage) UpdateTicket(t *Ticket) error {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `UPDATE tickets
+	          SET state_id = $1, state_changed_at = NOW(), version = version + 1
+			  WHERE id = $2 AND version = $3
+			  RETURNING version`
+	args := []any{t.StateID, t.ID, t.Version}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&t.Version)
+	return err
+}
+
+func (s *Storage) DeleteTicket(t *Ticket) error {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `DELETE FROM tickets 
+			  WHERE id = $1 AND version = $2`
+	args := []any{t.ID, t.Version}
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
+}
