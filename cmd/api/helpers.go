@@ -32,7 +32,7 @@ func getIDFromPathValue(r *http.Request) (int, error) {
 	return id, nil
 }
 
-func QueryStringOr(r *http.Request, key string, defaultValue string) string {
+func getQueryStringOr(r *http.Request, key string, defaultValue string) string {
 	s := r.URL.Query().Get(key)
 	if s == "" {
 		return defaultValue
@@ -40,7 +40,7 @@ func QueryStringOr(r *http.Request, key string, defaultValue string) string {
 	return s
 }
 
-func QueryCSVOr(r *http.Request, key string, defaultValue []string) []string {
+func getQueryCSVOr(r *http.Request, key string, defaultValue []string) []string {
 	s := r.URL.Query().Get(key)
 	if s == "" {
 		return defaultValue
@@ -48,7 +48,7 @@ func QueryCSVOr(r *http.Request, key string, defaultValue []string) []string {
 	return strings.Split(s, ",")
 }
 
-func QueryIntOr(r *http.Request, key string, defaultValue int, v *Validator) int {
+func getQueryIntOr(r *http.Request, key string, defaultValue int, v *Validator) int {
 	s := r.URL.Query().Get(key)
 	if s == "" {
 		return defaultValue

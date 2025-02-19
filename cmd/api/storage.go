@@ -784,7 +784,7 @@ func (s *Storage) CreateSchedule(movieID int64, hallID int32, price decimal.Deci
 	return &schedule, nil
 }
 
-func (s *Storage) GetSchedule(movieID int64, hallID int32, starts_at time.Time, ends_at time.Time) (*Schedule, error) {
+func (s *Storage) GetSchedule(movieID int64, hallID int32, starts_at time.Time, ends_at time.Time, execludingScheduleID int64) (*Schedule, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
 	schedule := Schedule{
@@ -793,9 +793,30 @@ func (s *Storage) GetSchedule(movieID int64, hallID int32, starts_at time.Time, 
 	}
 	query := `SELECT id, created_at, price, starts_at, ends_at, version
 	          FROM schedules
-			  WHERE id = $1 AND hall_id = $2 AND ((starts_at >= $1 AND starts_at <= $2) OR (ends >= $1 AND ends <= $2))`
-	args := []any{movieID, hallID, starts_at, ends_at}
-	err := s.db.QueryRowContext(ctx, query, args...).Scan(&schedule.ID, &schedule.CreatedAt, &schedule.StartsAt, &schedule.EndsAt, &schedule.Version)
+			  WHERE movie_id = $1 AND hall_id = $2 AND ((starts_at >= $3 AND starts_at <= $4) OR (ends_at >= $3 AND ends_at <= $4)) AND id != $5
+			  LIMIT 1`
+	args := []any{movieID, hallID, starts_at, ends_at, execludingScheduleID}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&schedule.ID, &schedule.CreatedAt, &schedule.Price, &schedule.StartsAt, &schedule.EndsAt, &schedule.Version)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &schedule, nil
+}
+
+func (s *Storage) GetScheduleByID(id int64) (*Schedule, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	schedule := Schedule{
+		ID: id,
+	}
+	query := `SELECT id, created_at, movie_id, hall_id, price, starts_at, ends_at, version
+	          FROM schedules
+			  WHERE id = $1`
+	args := []any{id}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&schedule.ID, &schedule.CreatedAt, &schedule.MovieID, &schedule.HallID, &schedule.Price, &schedule.StartsAt, &schedule.EndsAt, &schedule.Version)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -822,11 +843,11 @@ func (s *Storage) GetSchedules(movieID int64, hallID int32, sort string, page in
 		order = fmt.Sprintf("%s %s, id ASC", sort, op)
 	}
 
-	query := fmt.Sprintf(`SELECT count(*) OVER(), id, movie_id, halld_id, created_at, price, starts_at, ends_at, version
+	query := fmt.Sprintf(`SELECT count(*) OVER(), id, movie_id, hall_id, created_at, price, starts_at, ends_at, version
 						  FROM schedules
-						  WHERE movie_id = $1 AND halld_id = $2 AND NOW() > starts_at
+						  WHERE movie_id = $1 AND hall_id = $2 AND NOW() < ends_at
 						  ORDER BY %s
-						  OFFSET $3 LIMIT $4`, order)
+						  LIMIT $3 OFFSET $4`, order)
 
 	limit := pageSize
 	offset := (page - 1) * pageSize
