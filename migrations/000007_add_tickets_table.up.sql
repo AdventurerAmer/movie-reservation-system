@@ -20,3 +20,10 @@ CREATE TABLE IF NOT EXISTS tickets (
     version int NOT NULL DEFAULT 1,
     CONSTRAINT unique_ticket UNIQUE (schedule_id, seat_id)
 );
+
+CREATE TABLE IF NOT EXISTS tickets_users (
+    ticket_id bigint NOT NULL REFERENCES tickets(id),
+    user_id bigint NOT NULL REFERENCES users(id),
+    expires_at timestamp(0) with time zone NOT NULL DEFAULT NOW() + interval '10 minutes', 
+    PRIMARY KEY (ticket_id, user_id)
+);

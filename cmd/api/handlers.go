@@ -1501,13 +1501,13 @@ func (app *Application) getTicketsForScheduleHandler(w http.ResponseWriter, r *h
 		writeErrors(v, w)
 		return
 	}
-	tickets, err := app.storage.GetTicketsForSchedule(int64(id))
+	ticketSeats, err := app.storage.GetTicketSeatsForSchedule(int64(id))
 	if err != nil {
 		writeServerErr(err, w)
 		return
 	}
 	res := map[string]any{
-		"tickets": tickets,
+		"tickets": ticketSeats,
 	}
 	writeJSON(res, http.StatusOK, w)
 }
@@ -1646,6 +1646,100 @@ func (app *Application) deleteTicketHandler(w http.ResponseWriter, r *http.Reque
 	}
 	res := map[string]any{
 		"message": "resources deleted successfully",
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) lockTicketHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	t, err := app.storage.GetTicketByID(int64(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if t == nil {
+		writeNotFound(w)
+		return
+	}
+	if t.StateID == TicketStateLocked {
+		res := map[string]any{
+			"message": "ticket is already locked",
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+	err = app.storage.LockTicket(t, u)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"ticket": t,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) unlockTicketHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := getIDFromPathValue(r)
+	if err != nil {
+		writeBadRequest(err, w)
+		return
+	}
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	t, err := app.storage.GetTicketByID(int64(id))
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if t == nil {
+		writeNotFound(w)
+		return
+	}
+	if t.StateID != TicketStateLocked {
+		res := map[string]any{
+			"message": "ticket must be locked to unlock it",
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+	err = app.storage.UnlockTicketByUser(t, u)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"ticket": t,
+	}
+	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) getCheckoutHandler(w http.ResponseWriter, r *http.Request) {
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	userTickets, total, err := app.storage.GetTicketsForUser(u)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	res := map[string]any{
+		"tickets": userTickets,
+		"total":   total,
 	}
 	writeJSON(res, http.StatusOK, w)
 }

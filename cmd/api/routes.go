@@ -50,5 +50,10 @@ func composeRoutes(app *Application) http.Handler {
 	mux.HandleFunc("PUT /v1/tickets/{id}", app.authenticate(app.updateTicketHandler))
 	mux.HandleFunc("DELETE /v1/tickets/{id}", app.authenticate(app.deleteTicketHandler))
 
+	mux.HandleFunc("POST /v1/tickets/{id}/lock", app.authenticate(app.requireUserActivation(app.lockTicketHandler)))
+	mux.HandleFunc("POST /v1/tickets/{id}/unlock", app.authenticate(app.requireUserActivation(app.unlockTicketHandler)))
+
+	mux.HandleFunc("GET /v1/checkout", app.authenticate(app.requireUserActivation(app.getCheckoutHandler)))
+
 	return mux
 }

@@ -51,7 +51,7 @@ func (app *Application) authorize(permissions []Permission, next http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := getUserFromRequestContext(r)
 		if u == nil {
-			writeServerErr(errors.New("users must be authenticated"), w)
+			writeServerErr(errors.New("user is not authenticated"), w)
 			return
 		}
 		has, err := app.storage.GetPermissions(u.ID)
@@ -64,6 +64,21 @@ func (app *Application) authorize(permissions []Permission, next http.HandlerFun
 				writeForbidden(w)
 				return
 			}
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+func (app *Application) requireUserActivation(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := getUserFromRequestContext(r)
+		if u == nil {
+			writeServerErr(errors.New("user is not authenticated"), w)
+			return
+		}
+		if !u.IsActivated {
+			writeForbidden(w)
+			return
 		}
 		next.ServeHTTP(w, r)
 	}

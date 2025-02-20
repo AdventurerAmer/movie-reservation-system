@@ -164,3 +164,13 @@ type Ticket struct {
 	StateChangedAt time.Time       `json:"state_changed_at"`
 	Version        int32           `json:"version"`
 }
+
+type TicketSeat struct {
+	Ticket Ticket `json:"ticket"`
+	Seat   Seat   `json:"seat"`
+}
+
+type TicketUser struct {
+	Ticket    Ticket    `json:"ticket"`
+	ExpiresAt time.Time `json:"expires_at"`
+}

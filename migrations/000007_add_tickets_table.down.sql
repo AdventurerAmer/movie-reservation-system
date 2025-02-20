@@ -1,2 +1,3 @@
+DROP TABLE IF EXISTS tickets_users;
 DROP TABLE IF EXISTS tickets;
 DROP TABLE IF EXISTS ticket_states;
