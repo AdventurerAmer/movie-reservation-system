@@ -1041,10 +1041,15 @@ func (s *Storage) LockTicket(t *Ticket, u *User) error {
 	if err != nil {
 		return err
 	}
-	query0 := `UPDATE tickets
-	           SET state_id = 1, state_changed_at = NOW(), version = version + 1
-			   WHERE id = $1 AND version = $2 AND state_id != 1
-			   RETURNING state_id, state_changed_at, version`
+	query0 := `UPDATE tickets AS t
+			   SET state_id = 1, state_changed_at = NOW(), version = t.version + 1
+			   FROM schedules AS sc  
+			   WHERE t.schedule_id = sc.id 
+			   AND NOW() < sc.starts_at 
+			   AND t.id = $1 
+			   AND t.version = $2 
+			   AND state_id != 1
+			   RETURNING state_id, state_changed_at, t.version`
 	args0 := []any{t.ID, t.Version}
 	err = tx.QueryRowContext(ctx, query0, args0...).Scan(&t.StateID, &t.StateChangedAt, &t.Version)
 	if err != nil {
@@ -1149,7 +1154,7 @@ func (s *Storage) GetTicketsCheckoutForUser(u *User) ([]CheckoutTicket, decimal.
 			  ON h.id = s.hall_id
 			  INNER JOIN cinemas as c
 			  ON c.id = h.cinema_id
-			  WHERE tu.user_id = $1`
+			  WHERE tu.user_id = $1 AND NOW() < sc.starts_at`
 	args := []any{u.ID}
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {

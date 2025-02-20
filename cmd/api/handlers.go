@@ -1680,7 +1680,18 @@ func (app *Application) lockTicketHandler(w http.ResponseWriter, r *http.Request
 		writeJSON(res, http.StatusConflict, w)
 		return
 	}
-
+	s, err := app.storage.GetScheduleByID(t.ScheduleID)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if time.Now().After(s.StartsAt) {
+		res := map[string]any{
+			"message": "can't lock ticket because movie already started",
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
 	checkoutSession, err := app.storage.GetCheckoutSessionByUserID(u)
 	if err != nil {
 		writeServerErr(err, w)

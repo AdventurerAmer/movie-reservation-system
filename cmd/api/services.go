@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/checkout/session"
 )
 
@@ -85,13 +86,17 @@ func (app *Application) CheckoutSessionsService(checkoutSessionsPullCount int, t
 					break
 				}
 				for _, cs := range checkoutSessions {
-					_, err := session.Expire(cs.SessionID, nil)
-					if err != nil {
-						log.Printf("%T %v\n", err, err)
-					}
-					err = app.storage.DeleteUserCheckoutSession(cs.UserID)
+					s, err := session.Get(cs.SessionID, nil)
 					if err != nil {
 						log.Println(err)
+					}
+					if s.Status == stripe.CheckoutSessionStatusOpen {
+						_, err := session.Expire(cs.SessionID, nil)
+						if err != nil {
+							log.Println(err)
+						} else {
+							log.Printf("Expired Session: %v\n", cs.SessionID)
+						}
 					}
 				}
 			case _, open := <-app.quit:
