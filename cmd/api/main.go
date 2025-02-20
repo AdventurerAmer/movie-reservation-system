@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/stripe/stripe-go/v81"
 )
 
 const Version = "1.0.0"
@@ -83,6 +84,8 @@ func main() {
 	})
 
 	app.StartService(app.TokensService(time.Minute))
+	app.StartService(app.CheckoutSessionsService(100, time.Minute))
+	app.StartService(app.TicketsService(time.Minute))
 
 	addr := fmt.Sprintf(":%d", cfg.port)
 	srv := http.Server{
@@ -175,5 +178,11 @@ func loadConfig() (Config, error) {
 	if cfg.smtp.sender == "" {
 		return Config{}, fmt.Errorf(`environment variable "SMTP_SENDER" is not specified`)
 	}
+
+	stripeKey := os.Getenv("STRIPE_KEY")
+	if stripeKey == "" {
+		return Config{}, fmt.Errorf(`environment variable "STRIPE_KEY" is not specified`)
+	}
+	stripe.Key = stripeKey
 	return cfg, nil
 }

@@ -4,6 +4,8 @@ import (
 	"html/template"
 	"log"
 	"time"
+
+	"github.com/stripe/stripe-go/v81/checkout/session"
 )
 
 func (app *Application) Go(fn func()) {
@@ -66,5 +68,62 @@ func (app *Application) TokensService(tickRate time.Duration) ServiceFunc {
 			}
 		}
 		log.Println("Tokens service was shut down gracefully")
+	}
+}
+
+func (app *Application) CheckoutSessionsService(checkoutSessionsPullCount int, tickRate time.Duration) ServiceFunc {
+	return func() {
+		log.Println("Started checkout sessions service")
+		ticker := time.NewTicker(tickRate)
+	loop:
+		for {
+			select {
+			case <-ticker.C:
+				checkoutSessions, err := app.storage.GetExpiredCheckoutSessions(int64(checkoutSessionsPullCount))
+				if err != nil {
+					log.Println(err)
+					break
+				}
+				for _, cs := range checkoutSessions {
+					_, err := session.Expire(cs.SessionID, nil)
+					if err != nil {
+						log.Printf("%T %v\n", err, err)
+					}
+					err = app.storage.DeleteUserCheckoutSession(cs.UserID)
+					if err != nil {
+						log.Println(err)
+					}
+				}
+			case _, open := <-app.quit:
+				if !open {
+					break loop
+				}
+			}
+		}
+		log.Println("Checkout sessions service was shut down gracefully")
+	}
+}
+
+func (app *Application) TicketsService(tickRate time.Duration) ServiceFunc {
+	return func() {
+		log.Println("Started tickets service")
+		ticker := time.NewTicker(tickRate)
+	loop:
+		for {
+			select {
+			case <-ticker.C:
+				n, err := app.storage.UnlockExpiredTickets()
+				if err != nil {
+					log.Println(err)
+					break
+				}
+				log.Printf("Unlocked %d tickets\n", n)
+			case _, open := <-app.quit:
+				if !open {
+					break loop
+				}
+			}
+		}
+		log.Println("Tickets service was shut down gracefully")
 	}
 }

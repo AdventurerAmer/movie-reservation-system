@@ -8,9 +8,12 @@ import (
 	"log"
 	"net/http"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/shopspring/decimal"
+	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v81/checkout/session"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -1677,6 +1680,20 @@ func (app *Application) lockTicketHandler(w http.ResponseWriter, r *http.Request
 		writeJSON(res, http.StatusConflict, w)
 		return
 	}
+
+	checkoutSession, err := app.storage.GetCheckoutSessionByUserID(u)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if checkoutSession != nil {
+		res := map[string]any{
+			"message": fmt.Sprintf("you can't lock a ticket during checkout: %v", checkoutSession.SessionID),
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
 	err = app.storage.LockTicket(t, u)
 	if err != nil {
 		writeServerErr(err, w)
@@ -1715,6 +1732,20 @@ func (app *Application) unlockTicketHandler(w http.ResponseWriter, r *http.Reque
 		writeJSON(res, http.StatusConflict, w)
 		return
 	}
+
+	checkoutSession, err := app.storage.GetCheckoutSessionByUserID(u)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if checkoutSession != nil {
+		res := map[string]any{
+			"message": fmt.Sprintf("you can't unlock a ticket during checkout: %v", checkoutSession.SessionID),
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+
 	err = app.storage.UnlockTicketByUser(t, u)
 	if err != nil {
 		writeServerErr(err, w)
@@ -1732,14 +1763,91 @@ func (app *Application) getCheckoutHandler(w http.ResponseWriter, r *http.Reques
 		writeServerErr(errors.New("user is not authenticated"), w)
 		return
 	}
-	userTickets, total, err := app.storage.GetTicketsForUser(u)
+	ticketsCheckout, total, err := app.storage.GetTicketsCheckoutForUser(u)
 	if err != nil {
 		writeServerErr(err, w)
 		return
 	}
 	res := map[string]any{
-		"tickets": userTickets,
-		"total":   total,
+		"tickets_checkout": ticketsCheckout,
+		"total":            total,
 	}
 	writeJSON(res, http.StatusOK, w)
+}
+
+func (app *Application) checkoutHandler(w http.ResponseWriter, r *http.Request) {
+	u := getUserFromRequestContext(r)
+	if u == nil {
+		writeServerErr(errors.New("user is not authenticated"), w)
+		return
+	}
+	checkoutSession, err := app.storage.GetCheckoutSessionByUserID(u)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	if checkoutSession != nil {
+		res := map[string]any{
+			"message": fmt.Sprintf("you already have a session with id: %v", checkoutSession.SessionID),
+		}
+		writeJSON(res, http.StatusConflict, w)
+		return
+	}
+	ticketsCheckout, _, err := app.storage.GetTicketsCheckoutForUser(u)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	lineItems := make([]*stripe.CheckoutSessionLineItemParams, len(ticketsCheckout))
+	for i := 0; i < len(ticketsCheckout); i++ {
+		c := ticketsCheckout[i]
+		price, exact := c.Ticket.Price.Mul(decimal.NewFromInt(100)).Float64()
+		if !exact {
+			writeBadRequest(fmt.Errorf("price %v is not exact", price), w)
+			return
+		}
+		ticketStr := fmt.Sprintf("Movie: %s\nCinema: %s\nHall: %s\nSeat: %s\nTicket: %d\n %v-%v", c.Movie.Title, c.Cinema.Name, c.Hall.Name, c.Seat.Coordinates, c.Ticket.ID, c.Schedule.StartsAt, c.Schedule.EndsAt)
+		lineItems[i] = &stripe.CheckoutSessionLineItemParams{
+			PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+				Currency: stripe.String("usd"),
+				ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+					Name: stripe.String(ticketStr),
+				},
+				UnitAmountDecimal: stripe.Float64(price),
+			},
+			Quantity: stripe.Int64(1),
+		}
+	}
+
+	url := "http://localhost:8080/static/"
+	params := &stripe.CheckoutSessionParams{
+		LineItems:  lineItems,
+		Mode:       stripe.String(string(stripe.CheckoutSessionModePayment)),
+		SuccessURL: stripe.String(url + "success.html"),
+		CancelURL:  stripe.String(url + "cancel.html"),
+		ExpiresAt:  stripe.Int64(time.Now().Add(30 * time.Minute).Unix()),
+		Metadata: map[string]string{
+			"user_id": strconv.Itoa(int(u.ID)),
+		},
+	}
+	s, err := session.New(params)
+	if err != nil {
+		writeServerErr(err, w)
+		return
+	}
+	checkoutSession, err = app.storage.CreateCheckoutSession(u, s.ID)
+	if err != nil {
+		if _, err := session.Expire(s.ID, nil); err != nil {
+			writeServerErr(err, w)
+			return
+		}
+		writeServerErr(err, w)
+		return
+	}
+
+	res := map[string]any{
+		"url":              s.URL,
+		"checkout_session": checkoutSession,
+	}
+	writeJSON(res, http.StatusCreated, w)
 }

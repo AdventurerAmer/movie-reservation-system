@@ -170,7 +170,18 @@ type TicketSeat struct {
 	Seat   Seat   `json:"seat"`
 }
 
-type TicketUser struct {
-	Ticket    Ticket    `json:"ticket"`
+type CheckoutTicket struct {
+	Ticket   Ticket   `json:"ticket"`
+	Schedule Schedule `json:"schedule"`
+	Movie    Movie    `json:"movie"`
+	Seat     Seat     `json:"seat"`
+	Hall     Hall     `json:"hall"`
+	Cinema   Cinema   `json:"cinema"`
+}
+
+type CheckoutSession struct {
+	ID        int64     `json:"id"`
+	UserID    int64     `json:"user_id"`
+	SessionID string    `json:"session_id"`
 	ExpiresAt time.Time `json:"expires_at"`
 }

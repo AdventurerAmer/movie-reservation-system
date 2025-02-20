@@ -1127,15 +1127,29 @@ func (s *Storage) DeleteTicket(t *Ticket) error {
 	return err
 }
 
-func (s *Storage) GetTicketsForUser(u *User) ([]TicketUser, decimal.Decimal, error) {
+func (s *Storage) GetTicketsCheckoutForUser(u *User) ([]CheckoutTicket, decimal.Decimal, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
 	query := `SELECT t.id, t.created_at, t.schedule_id, t.seat_id, t.price, t.state_id, t.state_changed_at, t.version,
-	          tu.expires_at
-	          FROM tickets_users as tu
+			  sc.id, sc.created_at, sc.movie_id, sc.hall_id, sc.price, sc.starts_at, sc.ends_at, sc.version,
+	          m.id, m.created_at, m.title, m.runtime, m.year, m.genres, m.version,
+			  s.id, s.hall_id, s.coordinates, s.version,
+			  h.id, h.name, h.cinema_id, h.seat_arrangement, h.seat_price, h.version,
+			  c.id, c.name, c.location, c.owner_id, c.version
+			  FROM tickets_users as tu
 			  INNER JOIN tickets as t
 			  ON t.id = tu.ticket_id
-			  WHERE tu.user_id = $1 AND tu.expires_at >= NOW()`
+			  INNER JOIN schedules as sc
+			  ON t.schedule_id = sc.id
+			  INNER JOIN movies as m
+			  ON sc.movie_id = m.id
+			  INNER JOIN seats as s
+			  ON s.id = t.seat_id
+			  INNER JOIN halls as h
+			  ON h.id = s.hall_id
+			  INNER JOIN cinemas as c
+			  ON c.id = h.cinema_id
+			  WHERE tu.user_id = $1`
 	args := []any{u.ID}
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -1150,20 +1164,144 @@ func (s *Storage) GetTicketsForUser(u *User) ([]TicketUser, decimal.Decimal, err
 			log.Println(err)
 		}
 	}()
-	var tickets []TicketUser
+	var tickets []CheckoutTicket
 	total := decimal.Zero
 	for rows.Next() {
-		tu := TicketUser{}
-		t := &tu.Ticket
-		err = rows.Scan(&t.ID, &t.CreatedAt, &t.ScheduleID, &t.SeatID, &t.Price, &t.StateID, &t.StateChangedAt, &t.Version, &tu.ExpiresAt)
+		ct := CheckoutTicket{}
+		t := &ct.Ticket
+		sc := &ct.Schedule
+		m := &ct.Movie
+		s := &ct.Seat
+		h := &ct.Hall
+		c := &ct.Cinema
+		err = rows.Scan(&t.ID, &t.CreatedAt, &t.ScheduleID, &t.SeatID, &t.Price, &t.StateID, &t.StateChangedAt, &t.Version,
+			&sc.ID, &sc.CreatedAt, &sc.MovieID, &sc.HallID, &sc.Price, &sc.StartsAt, &sc.EndsAt, &sc.Version,
+			&m.ID, &m.CreatedAt, &m.Title, &m.Runtime, &m.Year, pq.Array(&m.Genres), &m.Version,
+			&s.ID, &s.HallID, &s.Coordinates, &s.Version,
+			&h.ID, &h.Name, &h.CinemaID, &h.SeatArrangement, &h.SeatPrice, &h.Version,
+			&c.ID, &c.Name, &c.Location, &c.OwnerID, &c.Version)
 		if err != nil {
 			return nil, decimal.Zero, err
 		}
-		tickets = append(tickets, tu)
+		tickets = append(tickets, ct)
 		total = total.Add(t.Price)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, decimal.Zero, err
 	}
 	return tickets, total, nil
+}
+
+func (s *Storage) CreateCheckoutSession(u *User, sessionID string) (*CheckoutSession, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	session := CheckoutSession{
+		UserID:    u.ID,
+		SessionID: sessionID,
+	}
+	query := `INSERT INTO checkout_sessions(user_id, session_id)
+	          VALUES ($1, $2)
+			  RETURNING expires_at`
+	args := []any{u.ID, sessionID}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&session.ExpiresAt)
+	if err != nil {
+		return nil, err
+	}
+	return &session, nil
+}
+
+func (s *Storage) GetCheckoutSessionByUserID(u *User) (*CheckoutSession, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	session := CheckoutSession{
+		UserID: u.ID,
+	}
+	query := `SELECT id, session_id, expires_at FROM checkout_sessions
+	          WHERE user_id = $1`
+	args := []any{u.ID}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&session.ID, &session.SessionID, &session.ExpiresAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &session, nil
+}
+
+func (s *Storage) DeleteUserCheckoutSession(UserID int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `DELETE FROM checkout_sessions
+	          WHERE user_id = $1`
+	args := []any{UserID}
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
+}
+
+func (s *Storage) GetExpiredCheckoutSessions(limit int64) ([]CheckoutSession, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `SELECT id, user_id, session_id, expires_at FROM checkout_sessions
+	          WHERE NOW() > expires_at
+			  ORDER BY id ASC
+			  LIMIT $1`
+	args := []any{limit}
+	rows, err := s.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var sessions []CheckoutSession
+	for rows.Next() {
+		var cs CheckoutSession
+		err := rows.Scan(&cs.ID, &cs.UserID, &cs.SessionID, &cs.ExpiresAt)
+		if err != nil {
+			return sessions, err
+		}
+		sessions = append(sessions, cs)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return sessions, nil
+}
+
+func (s *Storage) UnlockExpiredTickets() (int64, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	opts := &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+	}
+	tx, err := s.db.BeginTx(ctx, opts)
+	if err != nil {
+		return 0, err
+	}
+	query0 := `DELETE FROM tickets_users as tu
+			   WHERE NOW() > tu.expires_at AND NOT EXISTS(SELECT 1 FROM checkout_sessions as cs WHERE cs.user_id = tu.user_id)`
+
+	result, err := tx.ExecContext(ctx, query0)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	n, err := result.RowsAffected()
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	query1 := `UPDATE tickets as t
+	           SET state_id = 0, version = version + 1 
+			   WHERE t.state_id = 1 AND NOW() > state_changed_at AND NOT EXISTS(SELECT 1 FROM tickets_users as tu WHERE tu.ticket_id = t.id)`
+	_, err = tx.ExecContext(ctx, query1)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+	err = tx.Commit()
+	return n, err
 }
