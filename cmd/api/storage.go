@@ -1048,7 +1048,7 @@ func (s *Storage) LockTicket(t *Ticket, u *User) error {
 			   AND NOW() < sc.starts_at 
 			   AND t.id = $1 
 			   AND t.version = $2 
-			   AND state_id != 1
+			   AND state_id = 0
 			   RETURNING state_id, state_changed_at, t.version`
 	args0 := []any{t.ID, t.Version}
 	err = tx.QueryRowContext(ctx, query0, args0...).Scan(&t.StateID, &t.StateChangedAt, &t.Version)
@@ -1234,12 +1234,41 @@ func (s *Storage) GetCheckoutSessionByUserID(u *User) (*CheckoutSession, error) 
 	return &session, nil
 }
 
+func (s *Storage) GetCheckoutSessionBySessionID(sessionID string) (*CheckoutSession, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	session := CheckoutSession{
+		SessionID: sessionID,
+	}
+	query := `SELECT id, user_id, expires_at FROM checkout_sessions
+	          WHERE session_id = $1`
+	args := []any{sessionID}
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&session.ID, &session.UserID, &session.ExpiresAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &session, nil
+}
+
 func (s *Storage) DeleteUserCheckoutSession(UserID int64) error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
 	query := `DELETE FROM checkout_sessions
 	          WHERE user_id = $1`
 	args := []any{UserID}
+	_, err := s.db.ExecContext(ctx, query, args...)
+	return err
+}
+
+func (s *Storage) DeleteCheckoutSessionBySessionID(sessionID string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+	query := `DELETE FROM checkout_sessions
+	          WHERE session_id = $1`
+	args := []any{sessionID}
 	_, err := s.db.ExecContext(ctx, query, args...)
 	return err
 }
@@ -1309,4 +1338,54 @@ func (s *Storage) UnlockExpiredTickets() (int64, error) {
 	}
 	err = tx.Commit()
 	return n, err
+}
+
+func (s *Storage) FulfillCheckoutSessionForUser(sessionID string, userID int64) error {
+	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
+	defer cancel()
+
+	opts := &sql.TxOptions{
+		Isolation: sql.LevelSerializable,
+	}
+	tx, err := s.db.BeginTx(ctx, opts)
+	if err != nil {
+		return err
+	}
+	query0 := `UPDATE tickets AS t
+			   SET state_id = 2, state_changed_at = NOW(), version = t.version + 1
+			   FROM tickets_users AS tu
+			   WHERE t.id = tu.ticket_id AND tu.user_id = $1 AND t.state_id = 1`
+	args0 := []any{userID}
+	_, err = tx.ExecContext(ctx, query0, args0...)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	query1 := `INSERT INTO transactions(ticket_id, user_id)
+			   SELECT ticket_id, user_id FROM tickets_users
+			   WHERE user_id = $1`
+	args1 := []any{userID}
+	_, err = tx.ExecContext(ctx, query1, args1...)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	query2 := `DELETE FROM tickets_users
+			   WHERE user_id = $1`
+	args2 := []any{userID}
+	_, err = tx.ExecContext(ctx, query2, args2...)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	query3 := `DELETE FROM checkout_sessions
+	           WHERE user_id = $1 AND session_id = $2`
+	args3 := []any{userID, sessionID}
+	_, err = tx.ExecContext(ctx, query3, args3...)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	err = tx.Commit()
+	return err
 }

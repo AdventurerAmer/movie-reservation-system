@@ -32,6 +32,9 @@ type Config struct {
 		password string
 		sender   string
 	}
+	stripe struct {
+		webhookSecret string
+	}
 }
 
 type Application struct {
@@ -183,6 +186,13 @@ func loadConfig() (Config, error) {
 	if stripeKey == "" {
 		return Config{}, fmt.Errorf(`environment variable "STRIPE_KEY" is not specified`)
 	}
+
+	stripeWebhook := os.Getenv("STRIPE_WEBHOOK_SECRET")
+	if stripeWebhook == "" {
+		return Config{}, fmt.Errorf(`environment variable "STRIPE_WEBHOOK_SECRET" is not specified`)
+	}
+
 	stripe.Key = stripeKey
+	cfg.stripe.webhookSecret = stripeWebhook
 	return cfg, nil
 }

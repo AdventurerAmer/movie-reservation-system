@@ -95,7 +95,13 @@ func (app *Application) CheckoutSessionsService(checkoutSessionsPullCount int, t
 						if err != nil {
 							log.Println(err)
 						} else {
-							log.Printf("Expired Session: %v\n", cs.SessionID)
+							log.Println("Expired Session:", cs.SessionID)
+							err = app.storage.DeleteCheckoutSessionBySessionID(cs.SessionID)
+							if err != nil {
+								log.Println(err)
+							} else {
+								log.Println("Deleted Checkout Session:", cs.SessionID)
+							}
 						}
 					}
 				}
