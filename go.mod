@@ -13,5 +13,6 @@ require (
 require (
 	github.com/stripe/stripe-go v70.15.0+incompatible // indirect
 	github.com/stripe/stripe-go/v81 v81.3.1 // indirect
+	golang.org/x/time v0.10.0 // indirect
 	gopkg.in/alexcesaro/quotedprintable.v3 v3.0.0-20150716171945-2caba252f4dc // indirect
 )

@@ -60,5 +60,10 @@ func composeRoutes(app *Application) http.Handler {
 	mux.HandleFunc("POST /v1/checkout", app.authenticate(app.requireUserActivation(app.checkoutHandler)))
 	mux.HandleFunc("/v1/webhook", app.handleWebhook)
 	mux.HandleFunc("/v1/checkout_sessions/cancel", app.handleCheckoutSessionCancel)
+
+	if app.config.limiter.enabled {
+		return app.rateLimit(mux)
+	}
+
 	return mux
 }

@@ -3,9 +3,14 @@ package main
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"slices"
 	"strings"
+	"sync"
+	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type userRequestContextKey string
@@ -80,6 +85,70 @@ func (app *Application) requireUserActivation(next http.HandlerFunc) http.Handle
 			writeForbidden(w)
 			return
 		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+func (app *Application) rateLimit(next http.Handler) http.HandlerFunc {
+	type client struct {
+		limiter          *rate.Limiter
+		lastRequestWasAt time.Time
+	}
+	var (
+		mu      sync.RWMutex
+		clients = make(map[string]client)
+	)
+	app.StartService(func() {
+		ticker := time.NewTicker(time.Minute)
+	loop:
+		for {
+			select {
+			case <-ticker.C:
+				func() {
+					mu.Lock()
+					defer mu.Unlock()
+					for ip, c := range clients {
+						if time.Since(c.lastRequestWasAt) >= time.Minute*3 {
+							delete(clients, ip)
+						}
+					}
+				}()
+			case _, open := <-app.quit:
+				if !open {
+					break loop
+				}
+			}
+		}
+	})
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			writeServerErr(err, w)
+			return
+		}
+
+		exceeded := func() bool {
+			mu.Lock()
+			defer mu.Unlock()
+			c, ok := clients[ip]
+			if !ok {
+				c = client{
+					limiter: rate.NewLimiter(rate.Limit(app.config.limiter.maxRequestPerSecond), app.config.limiter.burst),
+				}
+			}
+			c.lastRequestWasAt = time.Now()
+			clients[ip] = c
+			return !c.limiter.Allow()
+		}()
+
+		if exceeded {
+			res := map[string]any{
+				"message": "rate limit exceeded",
+			}
+			writeJSON(res, http.StatusTooManyRequests, w)
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	}
 }

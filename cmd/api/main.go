@@ -35,6 +35,11 @@ type Config struct {
 	stripe struct {
 		webhookSecret string
 	}
+	limiter struct {
+		maxRequestPerSecond float64
+		burst               int
+		enabled             bool
+	}
 }
 
 type Application struct {
@@ -63,7 +68,7 @@ func main() {
 	log.Println("Connected to database")
 
 	app := &Application{
-		config:     cfg,
+		config:     *cfg,
 		storage:    storage,
 		mailer:     NewMailer(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 		servicesCh: make(chan ServiceFunc),
@@ -133,17 +138,17 @@ func main() {
 	log.Println("Server was shutdown gracefully")
 }
 
-func loadConfig() (Config, error) {
+func loadConfig() (*Config, error) {
 	err := godotenv.Load()
 	if err != nil {
-		return Config{}, fmt.Errorf("failed to load configuration: %w", err)
+		return nil, fmt.Errorf("failed to load configuration: %w", err)
 	}
 
 	env := os.Getenv("ENV")
 
 	port, err := strconv.Atoi(os.Getenv("SERVER_PORT"))
 	if err != nil {
-		return Config{}, fmt.Errorf(`invalid environment variable "SERVER_PORT" in configuration: %w`, err)
+		return nil, fmt.Errorf(`invalid environment variable "SERVER_PORT" in configuration: %w`, err)
 	}
 
 	cfg := Config{
@@ -153,46 +158,77 @@ func loadConfig() (Config, error) {
 
 	cfg.db.dsn = os.Getenv("DB_DSN")
 	if cfg.db.dsn == "" {
-		return Config{}, fmt.Errorf(`environment variable "DB_DSN" is not specified`)
+		return nil, fmt.Errorf(`environment variable "DB_DSN" is not specified`)
 	}
 
 	cfg.smtp.host = os.Getenv("SMTP_HOST")
 	if cfg.smtp.host == "" {
-		return Config{}, fmt.Errorf(`environment variable "SMTP_HOST" is not specified`)
+		return nil, fmt.Errorf(`environment variable "SMTP_HOST" is not specified`)
 	}
 
 	port, err = strconv.Atoi(os.Getenv("SMTP_PORT"))
 	if err != nil {
-		return Config{}, fmt.Errorf(`invalid environment variable "SMTP_PORT" in configuration: %w`, err)
+		return nil, fmt.Errorf(`invalid environment variable "SMTP_PORT" in configuration: %w`, err)
 	}
 	cfg.smtp.port = port
 
 	cfg.smtp.username = os.Getenv("SMTP_USERNAME")
 	if cfg.smtp.username == "" {
-		return Config{}, fmt.Errorf(`environment variable "SMTP_USERNAME" is not specified`)
+		return nil, fmt.Errorf(`environment variable "SMTP_USERNAME" is not specified`)
 	}
 
 	cfg.smtp.password = os.Getenv("SMTP_PASSWORD")
 	if cfg.smtp.password == "" {
-		return Config{}, fmt.Errorf(`environment variable "SMTP_PASSWORD" is not specified`)
+		return nil, fmt.Errorf(`environment variable "SMTP_PASSWORD" is not specified`)
 	}
 
 	cfg.smtp.sender = os.Getenv("SMTP_SENDER")
 	if cfg.smtp.sender == "" {
-		return Config{}, fmt.Errorf(`environment variable "SMTP_SENDER" is not specified`)
+		return nil, fmt.Errorf(`environment variable "SMTP_SENDER" is not specified`)
 	}
 
 	stripeKey := os.Getenv("STRIPE_KEY")
 	if stripeKey == "" {
-		return Config{}, fmt.Errorf(`environment variable "STRIPE_KEY" is not specified`)
+		return nil, fmt.Errorf(`environment variable "STRIPE_KEY" is not specified`)
 	}
 
 	stripeWebhook := os.Getenv("STRIPE_WEBHOOK_SECRET")
 	if stripeWebhook == "" {
-		return Config{}, fmt.Errorf(`environment variable "STRIPE_WEBHOOK_SECRET" is not specified`)
+		return nil, fmt.Errorf(`environment variable "STRIPE_WEBHOOK_SECRET" is not specified`)
 	}
 
 	stripe.Key = stripeKey
 	cfg.stripe.webhookSecret = stripeWebhook
-	return cfg, nil
+
+	limiterMaxRPS := os.Getenv("LIMITER_MAX_RPS")
+	if limiterMaxRPS == "" {
+		return nil, fmt.Errorf(`environment variable "LIMITER_MAX_RPS" is not specified`)
+	}
+
+	cfg.limiter.maxRequestPerSecond, err = strconv.ParseFloat(limiterMaxRPS, 64)
+	if err != nil {
+		return nil, fmt.Errorf(`invalid environment variable "LIMITER_MAX_RPS" value: %w`, err)
+	}
+
+	limiterBurst := os.Getenv("LIMITER_BURST")
+	if limiterBurst == "" {
+		return nil, fmt.Errorf(`environment variable "LIMITER_BURST" is not specified`)
+	}
+
+	cfg.limiter.burst, err = strconv.Atoi(limiterBurst)
+	if err != nil {
+		return nil, fmt.Errorf(`invalid environment variable "LIMITER_BURST" value: %w`, err)
+	}
+
+	limiterEnabled := os.Getenv("LIMITER_ENABLED")
+	if limiterEnabled == "" {
+		return nil, fmt.Errorf(`environment variable "LIMITER_ENABLED" is not specified`)
+	}
+
+	cfg.limiter.enabled, err = strconv.ParseBool(limiterEnabled)
+	if err != nil {
+		return nil, fmt.Errorf(`invalid environment variable "LIMITER_ENABLED" value: %w`, err)
+	}
+
+	return &cfg, nil
 }
