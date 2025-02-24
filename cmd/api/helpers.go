@@ -13,6 +13,18 @@ import (
 	"strings"
 )
 
+var InternalServerErrorBuf bytes.Buffer
+
+func init() {
+	res := map[string]any{
+		"message": "internal server error",
+	}
+	err := json.NewEncoder(&InternalServerErrorBuf).Encode(res)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func getPathValuePositiveInt(r *http.Request, p string) (int, error) {
 	v, err := strconv.Atoi(r.PathValue(p))
 	if err != nil {

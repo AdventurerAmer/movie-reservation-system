@@ -56,7 +56,7 @@ func (app *Application) TokensService(tickRate time.Duration) ServiceFunc {
 		for {
 			select {
 			case <-ticker.C:
-				n, err := app.storage.DeleteAllExpiredTokens()
+				n, err := app.storage.Tokens.DeleteAllExpired()
 				if err != nil {
 					log.Println(err)
 				} else if n != 0 {
@@ -80,7 +80,7 @@ func (app *Application) CheckoutSessionsService(checkoutSessionsPullCount int, t
 		for {
 			select {
 			case <-ticker.C:
-				checkoutSessions, err := app.storage.GetExpiredCheckoutSessions(int64(checkoutSessionsPullCount))
+				checkoutSessions, err := app.storage.Checkouts.GetAllExpired(int64(checkoutSessionsPullCount))
 				if err != nil {
 					log.Println(err)
 					break
@@ -96,7 +96,7 @@ func (app *Application) CheckoutSessionsService(checkoutSessionsPullCount int, t
 							log.Println(err)
 						} else {
 							log.Println("Expired Session:", cs.SessionID)
-							err = app.storage.DeleteCheckoutSessionBySessionID(cs.SessionID)
+							err = app.storage.Checkouts.DeleteBySessionID(cs.SessionID)
 							if err != nil {
 								log.Println(err)
 							} else {
@@ -123,7 +123,7 @@ func (app *Application) TicketsService(tickRate time.Duration) ServiceFunc {
 		for {
 			select {
 			case <-ticker.C:
-				n, err := app.storage.UnlockExpiredTickets()
+				n, err := app.storage.Tickets.UnlockAllExpired()
 				if err != nil {
 					log.Println(err)
 					break

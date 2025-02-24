@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/harlequingg/movie-reservation-system/internal"
 	"golang.org/x/time/rate"
 )
 
@@ -18,8 +19,8 @@ type userRequestContextKey string
 
 const UserRequestContextKey userRequestContextKey = "UserContextKey"
 
-func getUserFromRequestContext(r *http.Request) *User {
-	return r.Context().Value(UserRequestContextKey).(*User)
+func getUserFromRequestContext(r *http.Request) *internal.User {
+	return r.Context().Value(UserRequestContextKey).(*internal.User)
 }
 
 func (app *Application) authenticate(next http.HandlerFunc) http.HandlerFunc {
@@ -36,7 +37,7 @@ func (app *Application) authenticate(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 		token := parts[1]
-		u, err := app.storage.GetUserFromToken(TokenScopeAuthentication, token)
+		u, err := app.storage.Tokens.GetUser(internal.TokenScopeAuthentication, token)
 		if err != nil {
 			writeServerErr(err, w)
 			return
@@ -53,14 +54,14 @@ func (app *Application) authenticate(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (app *Application) authorize(permissions []Permission, next http.HandlerFunc) http.HandlerFunc {
+func (app *Application) authorize(permissions []internal.Permission, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := getUserFromRequestContext(r)
 		if u == nil {
 			writeServerErr(errors.New("user is not authenticated"), w)
 			return
 		}
-		has, err := app.storage.GetPermissions(u.ID)
+		has, err := app.storage.Permissions.Get(u.ID)
 		if err != nil {
 			writeServerErr(err, w)
 			return

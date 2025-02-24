@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"embed"
 	"errors"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/harlequingg/movie-reservation-system/internal"
 	"github.com/joho/godotenv"
 	"github.com/stripe/stripe-go/v81"
 )
@@ -49,11 +52,28 @@ type Config struct {
 
 type Application struct {
 	config     Config
-	storage    *Storage
+	storage    *internal.Storage
 	mailer     *Mailer
 	wg         sync.WaitGroup
 	servicesCh chan ServiceFunc
 	quit       chan struct{}
+}
+
+//go:embed templates
+var Templates embed.FS
+var ActivateUserTmpl *template.Template
+var ResetPasswordTempl *template.Template
+
+func init() {
+	var err error
+	ActivateUserTmpl, err = template.ParseFS(Templates, "templates/activate_user.gotmpl")
+	if err != nil {
+		panic(err)
+	}
+	ResetPasswordTempl, err = template.ParseFS(Templates, "templates/reset_password.gotmpl")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func main() {
@@ -65,7 +85,7 @@ func main() {
 	}
 
 	queryTimeout := 5 * time.Second
-	storage, err := NewStorage(cfg.db.dsn, queryTimeout)
+	storage, err := internal.NewStorage(cfg.db.dsn, queryTimeout)
 	if err != nil {
 		log.Fatal(err)
 	}
