@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -39,6 +41,9 @@ type Config struct {
 		maxRequestPerSecond float64
 		burst               int
 		enabled             bool
+	}
+	cors struct {
+		trustedOrigins []string
 	}
 }
 
@@ -95,8 +100,23 @@ func main() {
 	app.StartService(app.CheckoutSessionsService(100, time.Minute))
 	app.StartService(app.TicketsService(time.Minute))
 
+	tlsConfig := &tls.Config{
+		MinVersion:       tls.VersionTLS12,
+		MaxVersion:       tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+	}
+
 	addr := fmt.Sprintf(":%d", cfg.port)
 	srv := http.Server{
+		TLSConfig:    tlsConfig,
 		IdleTimeout:  time.Minute,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -125,7 +145,7 @@ func main() {
 	}()
 
 	log.Printf("Starting server on port %d\n", cfg.port)
-	err = srv.ListenAndServe()
+	err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	if err != nil {
 		if !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Server wasn't shutdown gracefully: %v\n", err)
@@ -229,6 +249,12 @@ func loadConfig() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf(`invalid environment variable "LIMITER_ENABLED" value: %w`, err)
 	}
+
+	trustedOriginStr := os.Getenv("CORS_TRUSTED_ORIGINS")
+	if trustedOriginStr == "" {
+		return nil, fmt.Errorf(`environment variable "CORS_TRUSTED_ORIGINS" is not specified`)
+	}
+	cfg.cors.trustedOrigins = strings.Fields(trustedOriginStr)
 
 	return &cfg, nil
 }

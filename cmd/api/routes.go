@@ -62,8 +62,8 @@ func composeRoutes(app *Application) http.Handler {
 	mux.HandleFunc("/v1/checkout_sessions/cancel", app.handleCheckoutSessionCancel)
 
 	if app.config.limiter.enabled {
-		return app.rateLimit(mux)
+		return app.enableCORS(app.recoverFromPanic(app.rateLimit(mux)))
 	}
 
-	return mux
+	return app.enableCORS(app.recoverFromPanic(mux))
 }
