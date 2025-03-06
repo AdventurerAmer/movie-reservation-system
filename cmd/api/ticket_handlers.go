@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/harlequingg/movie-reservation-system/internal"
+	"github.com/AdventurerAmer/movie-reservation-system/internal"
 )
 
 func (app *Application) createTicketsForScheduleHandler(w http.ResponseWriter, r *http.Request) {

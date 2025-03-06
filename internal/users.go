@@ -7,14 +7,15 @@ import (
 	"time"
 )
 
+// User represents a user in the system
 type User struct {
-	ID           int64     `json:"id"`
-	CreatedAt    time.Time `json:"created_at"`
-	Name         string    `json:"name"`
-	Email        string    `json:"email"`
-	PasswordHash []byte    `json:"-"`
-	IsActivated  bool      `json:"is_activated"`
-	Version      int32     `json:"-"`
+	ID           int64     `json:"id"`           // ID
+	CreatedAt    time.Time `json:"created_at"`   // CreatedAt
+	Name         string    `json:"name"`         // Name
+	Email        string    `json:"email"`        // Email
+	PasswordHash []byte    `json:"-"`            // PasswordHash
+	IsActivated  bool      `json:"is_activated"` // IsActivated
+	Version      int32     `json:"-"`            // Version
 }
 
 type UserStorer interface {

@@ -19,7 +19,7 @@ type SeatStorer interface {
 	Create(hallID int32, coordinates string) (*Seat, error)
 	Get(id int32) (*Seat, error)
 	GetAll(hallID int32) ([]Seat, error)
-	GetCinemaHall(seatID int32) (*Cinema, *Hall, *Seat, error)
+	GetWithCinemaAndHall(seatID int32) (*Cinema, *Hall, *Seat, error)
 	Update(seat *Seat) error
 	Delete(seat *Seat) error
 }
@@ -105,7 +105,7 @@ func (s seatStorage) GetAll(hallID int32) ([]Seat, error) {
 	return seats, nil
 }
 
-func (s seatStorage) GetCinemaHall(seatID int32) (*Cinema, *Hall, *Seat, error) {
+func (s seatStorage) GetWithCinemaAndHall(seatID int32) (*Cinema, *Hall, *Seat, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
 	seat := Seat{
@@ -113,7 +113,9 @@ func (s seatStorage) GetCinemaHall(seatID int32) (*Cinema, *Hall, *Seat, error) 
 	}
 	var h Hall
 	var c Cinema
-	query := `SELECT s.hall_id, s.coordinates, s.version, h.name, h.cinema_id, h.seat_arrangement, h.seat_price, h.version, c.id, c.location, c.owner_id, c.version
+	query := `SELECT s.hall_id, s.coordinates, s.version,
+	          h.name, h.cinema_id, h.seat_arrangement, h.seat_price, h.version,
+			  c.id, c.location, c.owner_id, c.version
 	          FROM seats as s
 			  INNER JOIN halls as h
 			  ON s.hall_id = h.id

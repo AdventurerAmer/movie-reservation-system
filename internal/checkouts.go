@@ -21,7 +21,6 @@ type CheckoutItem struct {
 }
 
 type CheckoutSession struct {
-	ID        int64     `json:"id"`
 	UserID    int64     `json:"user_id"`
 	SessionID string    `json:"session_id"`
 	ExpiresAt time.Time `json:"expires_at"`
@@ -132,10 +131,10 @@ func (s checkoutStorage) GetByUserID(userID int64) (*CheckoutSession, error) {
 	session := CheckoutSession{
 		UserID: userID,
 	}
-	query := `SELECT id, session_id, expires_at FROM checkout_sessions
+	query := `SELECT session_id, expires_at FROM checkout_sessions
 	          WHERE user_id = $1`
 	args := []any{userID}
-	err := s.db.QueryRowContext(ctx, query, args...).Scan(&session.ID, &session.SessionID, &session.ExpiresAt)
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&session.SessionID, &session.ExpiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -151,10 +150,10 @@ func (s checkoutStorage) GetBySessionID(sessionID string) (*CheckoutSession, err
 	session := CheckoutSession{
 		SessionID: sessionID,
 	}
-	query := `SELECT id, user_id, expires_at FROM checkout_sessions
+	query := `SELECT user_id, expires_at FROM checkout_sessions
 	          WHERE session_id = $1`
 	args := []any{sessionID}
-	err := s.db.QueryRowContext(ctx, query, args...).Scan(&session.ID, &session.UserID, &session.ExpiresAt)
+	err := s.db.QueryRowContext(ctx, query, args...).Scan(&session.UserID, &session.ExpiresAt)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -187,9 +186,8 @@ func (s checkoutStorage) DeleteBySessionID(sessionID string) error {
 func (s checkoutStorage) GetAllExpired(limit int64) ([]CheckoutSession, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
-	query := `SELECT id, user_id, session_id, expires_at FROM checkout_sessions
+	query := `SELECT user_id, session_id, expires_at FROM checkout_sessions
 	          WHERE NOW() > expires_at
-			  ORDER BY id ASC
 			  LIMIT $1`
 	args := []any{limit}
 	rows, err := s.db.QueryContext(ctx, query, args...)
@@ -202,7 +200,7 @@ func (s checkoutStorage) GetAllExpired(limit int64) ([]CheckoutSession, error) {
 	var sessions []CheckoutSession
 	for rows.Next() {
 		var cs CheckoutSession
-		err := rows.Scan(&cs.ID, &cs.UserID, &cs.SessionID, &cs.ExpiresAt)
+		err := rows.Scan(&cs.UserID, &cs.SessionID, &cs.ExpiresAt)
 		if err != nil {
 			return sessions, err
 		}

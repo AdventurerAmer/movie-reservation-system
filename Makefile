@@ -31,3 +31,15 @@ migrate_force:
 .PHONY: migrate_version
 migrate_version:
 	@migrate -database=${DB_DSN} -path=./migrations version
+
+.PHONY: generate_tls_certs
+generate_certs:
+	@openssl genrsa -out tls/key.pem 2048
+	@openssl req -new -key tls/key.pem -out tls/cert.pem
+	@openssl x509 -req -days 365 -in tls/cert.pem -signkey tls/key.pem -out tls/cert.pem
+	@openssl x509 -in tls/cert.pem -text -noout
+	
+.PHONY: generate_docs
+generate_docs:
+	@swag fmt -d ./cmd/api
+	@swag init -d ./cmd/api --parseDependency

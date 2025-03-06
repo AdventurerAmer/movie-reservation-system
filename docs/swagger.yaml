@@ -1,0 +1,92 @@
+basePath: /v1
+definitions:
+  internal.User:
+    properties:
+      created_at:
+        description: CreatedAt
+        type: string
+      email:
+        description: Email
+        type: string
+      id:
+        description: ID
+        type: integer
+      is_activated:
+        description: IsActivated
+        type: boolean
+      name:
+        description: Name
+        type: string
+    type: object
+  main.ResponseError:
+    properties:
+      error:
+        description: Error
+        type: string
+    type: object
+  main.ResponseMessage:
+    properties:
+      message:
+        description: Message
+        type: string
+    type: object
+  main.Violations:
+    additionalProperties:
+      type: string
+    type: object
+host: https://localhost:8080
+info:
+  contact:
+    email: ahamerdev@gmail.com
+    name: Ahmed Amer
+  description: a simple movie reservation system api for educational purposes
+  title: Movie Reservation System API
+  version: "1.0"
+paths:
+  /users:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user by name, email, password
+      parameters:
+      - description: name of the user
+        in: body
+        name: name
+        required: true
+        schema:
+          type: string
+      - description: email of the user
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: password of the user
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.Violations'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Create a new user
+      tags:
+      - users
+swagger: "2.0"

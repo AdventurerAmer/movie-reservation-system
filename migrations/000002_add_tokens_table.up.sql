@@ -15,5 +15,5 @@ CREATE TABLE IF NOT EXISTS tokens (
     user_id bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     scope_id smallint NOT NULL REFERENCES token_scopes(id),
     hash bytea NOT NULL,
-    expires_at timestamp(0) with time zone NOT NULL
+    expires_at TIMESTAMPTZ NOT NULL
 );

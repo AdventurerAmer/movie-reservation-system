@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/harlequingg/movie-reservation-system/internal"
+	"github.com/AdventurerAmer/movie-reservation-system/internal"
 	"golang.org/x/time/rate"
 )
 

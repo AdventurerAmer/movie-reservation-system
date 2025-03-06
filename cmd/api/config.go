@@ -54,6 +54,7 @@ func MustLoadConfig() *Config {
 	}
 
 	cfg := Config{}
+
 	cfg.environment = MustGetStringEnvVar("ENV")
 	cfg.port = MustGetIntEnvVar("PORT")
 

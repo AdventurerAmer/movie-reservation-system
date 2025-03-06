@@ -30,5 +30,13 @@ VALUES
 ('cinemas:read'),
 ('cinemas:create'),
 ('cinemas:update'),
-('cinemas:delete')
+('cinemas:delete'),
+('halls:read'),
+('halls:create'),
+('halls:update'),
+('halls:delete'),
+('seats:read'),
+('seats:create'),
+('seats:update'),
+('seats:delete')
 ON CONFLICT DO NOTHING;

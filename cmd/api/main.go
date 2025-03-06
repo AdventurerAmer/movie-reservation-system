@@ -16,9 +16,19 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/harlequingg/movie-reservation-system/internal"
+	"github.com/AdventurerAmer/movie-reservation-system/internal"
 	"github.com/stripe/stripe-go/v81"
 )
+
+//	@title			Movie Reservation System API
+//	@version		1.0
+//	@description	a simple movie reservation system api for educational purposes
+
+//	@contact.name	Ahmed Amer
+//	@contact.email	ahamerdev@gmail.com
+
+//	@host		https://localhost:8080
+//	@BasePath	/v1
 
 const Version = "1.0.0"
 

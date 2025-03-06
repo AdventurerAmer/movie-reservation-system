@@ -312,7 +312,7 @@ func (app *Application) updateHallHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(errors.New("user is not authenticated"), w)
 		return
 	}
-	h, c, err := app.storage.Halls.GetCinema(int32(id))
+	h, c, err := app.storage.Halls.GetAndCinema(int32(id))
 	if err != nil {
 		writeServerErr(err, w)
 		return
@@ -356,7 +356,7 @@ func (app *Application) deleteHallHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(errors.New("user is not authenticated"), w)
 		return
 	}
-	h, c, err := app.storage.Halls.GetCinema(int32(id))
+	h, c, err := app.storage.Halls.GetAndCinema(int32(id))
 	if err != nil {
 		writeServerErr(err, w)
 		return
@@ -404,7 +404,7 @@ func (app *Application) createSeatHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(errors.New("user is not authenticated"), w)
 		return
 	}
-	h, c, err := app.storage.Halls.GetCinema(int32(id))
+	h, c, err := app.storage.Halls.GetAndCinema(int32(id))
 	if err != nil {
 		writeServerErr(err, w)
 		return
@@ -470,7 +470,7 @@ func (app *Application) updateSeatHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	c, _, s, err := app.storage.Seats.GetCinemaHall(int32(id))
+	c, _, s, err := app.storage.Seats.GetWithCinemaAndHall(int32(id))
 	if err != nil {
 		writeServerErr(err, w)
 		return
@@ -508,7 +508,7 @@ func (app *Application) deleteSeatHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	c, _, s, err := app.storage.Seats.GetCinemaHall(int32(id))
+	c, _, s, err := app.storage.Seats.GetWithCinemaAndHall(int32(id))
 	if err != nil {
 		writeServerErr(err, w)
 		return

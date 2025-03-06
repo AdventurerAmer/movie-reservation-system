@@ -6,10 +6,25 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/harlequingg/movie-reservation-system/internal"
+	"github.com/AdventurerAmer/movie-reservation-system/internal"
 	"golang.org/x/crypto/bcrypt"
 )
 
+// createUserHandler godoc
+//
+//	@Summary		Create a new user
+//	@Description	Create a new user by name, email, password
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			name		body		string	true "name of the user"
+//	@Param			email		body		string	true "email of the user"
+//	@Param			password	body		string	true "password of the user"
+//	@Success		201			{object}	internal.User
+//	@Failure		400			{object}	Violations
+//	@Failure		409			{object}	ResponseMessage
+//	@Failure		500			{object}	ResponseError
+//	@Router			/users [post]
 func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name     *string `json:"name"`
@@ -39,7 +54,7 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 
 	if u != nil {
 		res := map[string]any{
-			"message": "user with the provided email is already registered",
+			"message": "email already exists",
 		}
 		writeJSON(res, http.StatusConflict, w)
 		return
@@ -53,7 +68,7 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 
 	user, err := app.storage.Users.Create(*req.Name, *req.Email, passwordHash)
 	if err != nil {
-		writeError(err, http.StatusConflict, w)
+		writeServerErr(err, w)
 		return
 	}
 

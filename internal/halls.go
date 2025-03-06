@@ -22,7 +22,7 @@ type Hall struct {
 type HallStorer interface {
 	Create(name string, cinemaID int32, seatArrangement string, seatPrice decimal.Decimal) (*Hall, error)
 	Get(id int32) (*Hall, error)
-	GetCinema(hallID int32) (*Hall, *Cinema, error)
+	GetAndCinema(hallID int32) (*Hall, *Cinema, error)
 	GetAllForCinema(cinemaID int32) ([]Hall, error)
 	Update(h *Hall) error
 	Delete(h *Hall) error
@@ -73,7 +73,7 @@ func (s hallStorage) Get(id int32) (*Hall, error) {
 	return &h, nil
 }
 
-func (s hallStorage) GetCinema(hallID int32) (*Hall, *Cinema, error) {
+func (s hallStorage) GetAndCinema(hallID int32) (*Hall, *Cinema, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.queryTimeout)
 	defer cancel()
 	h := Hall{

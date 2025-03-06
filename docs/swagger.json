@@ -1,0 +1,137 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "a simple movie reservation system api for educational purposes",
+        "title": "Movie Reservation System API",
+        "contact": {
+            "name": "Ahmed Amer",
+            "email": "ahamerdev@gmail.com"
+        },
+        "version": "1.0"
+    },
+    "host": "https://localhost:8080",
+    "basePath": "/v1",
+    "paths": {
+        "/users": {
+            "post": {
+                "description": "Create a new user by name, email, password",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Create a new user",
+                "parameters": [
+                    {
+                        "description": "name of the user",
+                        "name": "name",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "email of the user",
+                        "name": "email",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "password of the user",
+                        "name": "password",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.Violations"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "internal.User": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "description": "CreatedAt",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "Email",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID",
+                    "type": "integer"
+                },
+                "is_activated": {
+                    "description": "IsActivated",
+                    "type": "boolean"
+                },
+                "name": {
+                    "description": "Name",
+                    "type": "string"
+                }
+            }
+        },
+        "main.ResponseError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "Error",
+                    "type": "string"
+                }
+            }
+        },
+        "main.ResponseMessage": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "description": "Message",
+                    "type": "string"
+                }
+            }
+        },
+        "main.Violations": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        }
+    }
+}

@@ -69,7 +69,7 @@ func (app *Application) createScheduleHandler(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	_, c, err := app.storage.Halls.GetCinema(*req.HallID)
+	_, c, err := app.storage.Halls.GetAndCinema(*req.HallID)
 	if err != nil {
 		writeServerErr(err, w)
 		return

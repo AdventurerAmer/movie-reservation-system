@@ -13,6 +13,16 @@ import (
 	"strings"
 )
 
+// Respons Message
+type ResponseMessage struct {
+	Message string `json:"message"` // Message
+}
+
+// ResponseError
+type ResponseError struct {
+	Error string `json:"error"` // Error
+}
+
 var InternalServerErrorBuf bytes.Buffer
 
 func init() {
