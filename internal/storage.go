@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"context"
 	"database/sql"
 	"time"
 )
@@ -19,24 +18,7 @@ type Storage struct {
 	Checkouts   CheckoutStorer
 }
 
-func NewStorage(dsn string, queryTimeout time.Duration) (*Storage, error) {
-	db, err := sql.Open("postgres", dsn)
-	if err != nil {
-		return nil, err
-	}
-
-	db.SetMaxIdleConns(25)
-	db.SetMaxOpenConns(25)
-	db.SetConnMaxIdleTime(15 * time.Minute)
-
-	ctx, cancel := context.WithTimeout(context.Background(), queryTimeout)
-	defer cancel()
-
-	err = db.PingContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
+func NewStorage(db *sql.DB, queryTimeout time.Duration) *Storage {
 	s := &Storage{
 		Users:       userStorage{db: db, queryTimeout: queryTimeout},
 		Tokens:      tokenStorage{db: db, queryTimeout: queryTimeout},
@@ -49,5 +31,5 @@ func NewStorage(dsn string, queryTimeout time.Duration) (*Storage, error) {
 		Tickets:     ticketStorage{db: db, queryTimeout: queryTimeout},
 		Checkouts:   checkoutStorage{db: db, queryTimeout: queryTimeout},
 	}
-	return s, nil
+	return s
 }
