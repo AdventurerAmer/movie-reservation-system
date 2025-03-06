@@ -10,12 +10,28 @@ import (
 	"os"
 	"time"
 
+	"github.com/AdventurerAmer/movie-reservation-system/internal"
 	"github.com/shopspring/decimal"
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/checkout/session"
 	"github.com/stripe/stripe-go/webhook"
 )
 
+type GetCheckoutResponse struct {
+	Items []internal.CheckoutItem `json:"items"`
+	Total decimal.Decimal         `json:"price"`
+}
+
+// getCheckoutHandler godoc
+//
+//	@Summary		Gets checkout
+//	@Description	gets a list of checkout items
+//	@Tags			checkouts
+//	@Accept			json
+//	@Produce		json
+//	@Success		200	{object}	GetCheckoutResponse
+//	@Failure		500	{object}	ResponseError
+//	@Router			/checkout [get]
 func (app *Application) getCheckoutHandler(w http.ResponseWriter, r *http.Request) {
 	u := getUserFromRequestContext(r)
 	if u == nil {
@@ -27,13 +43,27 @@ func (app *Application) getCheckoutHandler(w http.ResponseWriter, r *http.Reques
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"items": items,
-		"total": total,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetCheckoutResponse{Items: items, Total: total}, http.StatusOK, w)
 }
 
+type CheckoutResponse struct {
+	URL             string                    `json:"url"`
+	CheckoutSession *internal.CheckoutSession `json:"session"`
+}
+
+// checkoutHandler godoc
+//
+//	@Summary		Checks out a user
+//	@Description	checks out a user
+//	@Tags			checkouts
+//	@Accept			json
+//	@Produce		json
+//	@Success		201	{object}	GetCheckoutResponse
+//	@Success		400	{object}	ResponseMessage
+//	@Success		409	{object}	ResponseMessage
+//	@Success		422	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/checkout [get]
 func (app *Application) checkoutHandler(w http.ResponseWriter, r *http.Request) {
 	u := getUserFromRequestContext(r)
 	if u == nil {
@@ -46,10 +76,7 @@ func (app *Application) checkoutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if checkoutSession != nil {
-		res := map[string]any{
-			"message": fmt.Sprintf("you already have a session with id: %v", checkoutSession.SessionID),
-		}
-		writeJSON(res, http.StatusConflict, w)
+		writeJSON(ResponseMessage{Message: fmt.Sprintf("you already have a session with id: %v", checkoutSession.SessionID)}, http.StatusConflict, w)
 		return
 	}
 	ticketsCheckout, _, err := app.storage.Checkouts.GetItems(u.ID)
@@ -58,10 +85,7 @@ func (app *Application) checkoutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if len(ticketsCheckout) == 0 {
-		res := map[string]any{
-			"message": "you didn't lock any tickets",
-		}
-		writeJSON(res, http.StatusUnprocessableEntity, w)
+		writeJSON(ResponseMessage{Message: "you didn't lock any tickets"}, http.StatusUnprocessableEntity, w)
 		return
 	}
 	lineItems := make([]*stripe.CheckoutSessionLineItemParams, len(ticketsCheckout))
@@ -108,11 +132,7 @@ func (app *Application) checkoutHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	res := map[string]any{
-		"url":              s.URL,
-		"checkout_session": checkoutSession,
-	}
-	writeJSON(res, http.StatusCreated, w)
+	writeJSON(CheckoutResponse{URL: s.URL, CheckoutSession: checkoutSession}, http.StatusCreated, w)
 }
 
 func (app *Application) handleWebhook(w http.ResponseWriter, r *http.Request) {

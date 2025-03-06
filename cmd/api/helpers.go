@@ -13,16 +13,6 @@ import (
 	"strings"
 )
 
-// Respons Message
-type ResponseMessage struct {
-	Message string `json:"message"` // Message
-}
-
-// ResponseError
-type ResponseError struct {
-	Error string `json:"error"` // Error
-}
-
 var InternalServerErrorBuf bytes.Buffer
 
 func init() {
@@ -33,6 +23,21 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// Response Message
+type ResponseMessage struct {
+	Message string `json:"message"` // Message
+}
+
+// Response Error
+type ResponseError struct {
+	Error string `json:"error"` // Error
+}
+
+// Violations
+type ViolationsMessage struct {
+	Errors map[string]string `json:"errors"` // errors
 }
 
 func getPathValuePositiveInt(r *http.Request, p string) (int, error) {

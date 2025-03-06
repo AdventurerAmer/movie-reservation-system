@@ -9,6 +9,20 @@ import (
 	"github.com/AdventurerAmer/movie-reservation-system/internal"
 )
 
+// createTicketsForScheduleHandler godoc
+//
+//	@Summary		Creates the tickets
+//	@Description	creates the tickets for a given schedule
+//	@Tags			tickets
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"schedule id"
+//	@Success		201	{object}	ResponseMessage
+//	@Failure		400	{object}	ResponseError
+//	@Failure		400	{object}	ViolationsMessage
+//	@Failure		404	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/schedules/{id}/tickets [post]
 func (app *Application) createTicketsForScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -40,13 +54,26 @@ func (app *Application) createTicketsForScheduleHandler(w http.ResponseWriter, r
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"message":      "created tickets successfully",
-		"ticket_count": n,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(ResponseMessage{Message: fmt.Sprintf("created %d tickets successfully", n)}, http.StatusOK, w)
 }
 
+type GetTicketsForSchedule struct {
+	Tickets []internal.Ticket `json:"tickets"`
+}
+
+// getTicketsForScheduleHandler godoc
+//
+//	@Summary		Gets a list of tickets
+//	@Description	gets a list of tickets for a given schedule
+//	@Tags			tickets
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"schedule id"
+//	@Success		200	{object}	ResponseMessage
+//	@Failure		400	{object}	ResponseError
+//	@Failure		400	{object}	ViolationsMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/schedules/{id}/tickets [get]
 func (app *Application) getTicketsForScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -59,17 +86,32 @@ func (app *Application) getTicketsForScheduleHandler(w http.ResponseWriter, r *h
 		writeErrors(v, w)
 		return
 	}
-	ticketSeats, err := app.storage.Tickets.GetAllForSchedule(int64(id))
+	tickets, err := app.storage.Tickets.GetAllForSchedule(int64(id))
 	if err != nil {
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"tickets": ticketSeats,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetTicketsForSchedule{Tickets: tickets}, http.StatusOK, w)
 }
 
+type LockTicketResponse struct {
+	Ticket *internal.Ticket `json:"ticket"`
+}
+
+// lockTicketHandler godoc
+//
+//	@Summary		Locks a ticket
+//	@Description	locks a ticket to a given user for some time
+//	@Tags			tickets
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"ticket id"
+//	@Success		200	{object}	LockTicketResponse
+//	@Failure		400	{object}	ResponseError
+//	@Failure		404	{object}	ResponseMessage
+//	@Failure		409	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/tickets/{id}/lock [post]
 func (app *Application) lockTicketHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -91,17 +133,11 @@ func (app *Application) lockTicketHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if t.StateID == internal.TicketStateLocked {
-		res := map[string]any{
-			"message": "ticket is already locked",
-		}
-		writeJSON(res, http.StatusConflict, w)
+		writeJSON(ResponseMessage{Message: "ticket is already locked"}, http.StatusConflict, w)
 		return
 	}
 	if t.ScheduleID == int64(internal.TicketStateSold) {
-		res := map[string]any{
-			"message": "ticket is already sold",
-		}
-		writeJSON(res, http.StatusConflict, w)
+		writeJSON(ResponseMessage{Message: "ticket is already sold"}, http.StatusConflict, w)
 		return
 	}
 	s, err := app.storage.Schedules.GetByID(t.ScheduleID)
@@ -110,10 +146,7 @@ func (app *Application) lockTicketHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if time.Now().After(s.StartsAt) {
-		res := map[string]any{
-			"message": "can't lock ticket because movie already started",
-		}
-		writeJSON(res, http.StatusConflict, w)
+		writeJSON(ResponseMessage{Message: "can't lock ticket because movie already started"}, http.StatusConflict, w)
 		return
 	}
 	checkoutSession, err := app.storage.Checkouts.GetByUserID(u.ID)
@@ -122,10 +155,7 @@ func (app *Application) lockTicketHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if checkoutSession != nil {
-		res := map[string]any{
-			"message": fmt.Sprintf("you can't lock a ticket during checkout: %v", checkoutSession.SessionID),
-		}
-		writeJSON(res, http.StatusConflict, w)
+		writeJSON(ResponseMessage{Message: fmt.Sprintf("you can't lock a ticket during checkout: %v", checkoutSession.SessionID)}, http.StatusConflict, w)
 		return
 	}
 
@@ -134,12 +164,23 @@ func (app *Application) lockTicketHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"ticket": t,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(LockTicketResponse{Ticket: t}, http.StatusOK, w)
 }
 
+// unlockTicketHandler godoc
+//
+//	@Summary		Unlocks a ticket
+//	@Description	unlocks a ticket
+//	@Tags			tickets
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"ticket id"
+//	@Success		200	{object}	LockTicketResponse
+//	@Failure		400	{object}	ResponseError
+//	@Failure		404	{object}	ResponseMessage
+//	@Failure		409	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/tickets/{id}/unlock [post]
 func (app *Application) unlockTicketHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {

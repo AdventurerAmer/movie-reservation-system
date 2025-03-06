@@ -64,6 +64,7 @@ func composeRoutes(app *Application) http.Handler {
 
 	mux.HandleFunc("GET /v1/checkout", app.authenticate(app.requireUserActivation(app.getCheckoutHandler)))
 	mux.HandleFunc("POST /v1/checkout", app.authenticate(app.requireUserActivation(app.checkoutHandler)))
+
 	mux.HandleFunc("/v1/webhook", app.handleWebhook)
 	mux.HandleFunc("/v1/checkout_sessions/cancel", app.handleCheckoutSessionCancel)
 

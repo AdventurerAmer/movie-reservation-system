@@ -4,8 +4,29 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+
+	"github.com/AdventurerAmer/movie-reservation-system/internal"
 )
 
+type CreateMovieResponse struct {
+	Movie *internal.Movie `json:"movie"`
+}
+
+// createMovieHandler godoc
+//
+//	@Summary		Creates a movie
+//	@Description	sreates a movie
+//	@Tags			movies
+//	@Accept			json
+//	@Produce		json
+//	@Param			title	body		string	true	"title"
+//	@Param			runtime	body		int		true	"runtime"
+//	@Param			year	body		int		true	"year"
+//	@Param			genres	body		array	true	"genres"
+//	@Success		201		{object}	CreateMovieResponse
+//	@Failure		400		{object}	ViolationsMessage
+//	@Failure		500		{object}	ResponseError
+//	@Router			/movies [post]
 func (app *Application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Title   string   `json:"title"`
@@ -38,12 +59,26 @@ func (app *Application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"movie": m,
-	}
-	writeJSON(res, http.StatusCreated, w)
+	writeJSON(CreateMovieResponse{Movie: m}, http.StatusCreated, w)
 }
 
+type GetMovieResponse struct {
+	Movie *internal.Movie `json:"movie"`
+}
+
+// getMovieHandler godoc
+//
+//	@Summary		Gets a movie
+//	@Description	gets a movie by id
+//	@Tags			movies
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"id"
+//	@Success		200	{object}	GetMovieResponse
+//	@Failure		400	{object}	ResponseMessage
+//	@Failure		404	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/movies/{id} [get]
 func (app *Application) getMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -59,12 +94,31 @@ func (app *Application) getMovieHandler(w http.ResponseWriter, r *http.Request) 
 		writeNotFound(w)
 		return
 	}
-	res := map[string]any{
-		"movie": m,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetMovieResponse{Movie: m}, http.StatusOK, w)
 }
 
+type GetMoviesResponse struct {
+	Movies   []internal.Movie   `json:"movies"`
+	MetaData *internal.MetaData `json:"meta_data"`
+}
+
+// getMoviesHandler godoc
+//
+//	@Summary		Gets a list of movies
+//	@Description	gets a list movies with search paramters
+//	@Tags			movies
+//	@Accept			json
+//	@Produce		json
+//	@Param			title		query	string	false	"title"
+//	@Param			genres		query	string	false	"genres comma separated"
+//	@Param			page		query	int		false	"page number"
+//	@Param			page_size	query	int		false	"number of pages"
+//	@param			sort		query	string	false	"sort params (id, title, year, runtime) prefix with - to sort descending"
+
+// @Success	200	{object}	GetMoviesResponse
+// @Failure	400	{object}	ViolationsMessage
+// @Failure	500	{object}	ResponseError
+// @Router		/movies [get]
 func (app *Application) getMoviesHandler(w http.ResponseWriter, r *http.Request) {
 	v := NewValidator()
 
@@ -85,18 +139,36 @@ func (app *Application) getMoviesHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	movies, meta, err := app.storage.Movies.GetAll(title, genres, page, pageSize, sort)
+	movies, metaData, err := app.storage.Movies.GetAll(title, genres, page, pageSize, sort)
 	if err != nil {
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"movies": movies,
-		"meta":   meta,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetMoviesResponse{Movies: movies, MetaData: metaData}, http.StatusOK, w)
 }
 
+type UpdateMovieResponse struct {
+	Movie internal.Movie `json:"movie"`
+}
+
+// updateMovieHandler godoc
+//
+//	@Summary		Updates a movie
+//	@Description	updates a movie by id
+//	@Tags			movies
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path	int		true	"id"
+//	@Param			title	body	string	false	"title"
+//	@Param			runtime	body	int		false	"runtime"
+//	@Param			year	body	int		false	"year"
+//	@Param			genres	body	array	false	"genres comma separated"
+
+// @Success	200	{object}	UpdateMovieResponse
+// @Failure	400	{object}	ViolationsMessage
+// @Failure	404	{object}	ResponseMessage
+// @Failure	500	{object}	ResponseError
+// @Router		/movies/{id} [put]
 func (app *Application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -166,6 +238,22 @@ func (app *Application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	writeJSON(res, http.StatusOK, w)
 }
 
+// deleteMovieHandler godoc
+//
+//	@Summary		Deletes a movie
+//	@Description	deletes a movie by id
+//	@Tags			movies
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path	int		true	"title"
+//	@Param			runtime	body	string	false	"genres comma separated"
+//	@Param			year	body	string	false	"title"
+//	@Param			genres	body	string	false	"genres comma separated"
+
+// @Success	200	{object}	ResponseMessage
+// @Failure	400	{object}	ViolationsMessage
+// @Failure	500	{object}	ResponseError
+// @Router		/movies/{id} [delete]
 func (app *Application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -186,8 +274,5 @@ func (app *Application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"message": "resource deleted successfully",
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(ResponseMessage{Message: "resource deleted successfully"}, http.StatusOK, w)
 }

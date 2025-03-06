@@ -12,9 +12,1636 @@
     "host": "https://localhost:8080",
     "basePath": "/v1",
     "paths": {
+        "/checkout": {
+            "get": {
+                "description": "checks out a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checkouts"
+                ],
+                "summary": "Checks out a user",
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.GetCheckoutResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/cinemas": {
+            "get": {
+                "description": "gets a list of cinemas by search parameters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cinemas"
+                ],
+                "summary": "Get a list of cinemas",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "name",
+                        "name": "name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "location",
+                        "name": "location",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort params are (name, location) prefix with - to sort descending",
+                        "name": "sort",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateCinemaResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "creates a cinema",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cinemas"
+                ],
+                "summary": "Creates a cinema",
+                "parameters": [
+                    {
+                        "description": "name",
+                        "name": "name",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "location",
+                        "name": "location",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateCinemaResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/cinemas/{id}": {
+            "get": {
+                "description": "gets a cinema by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cinemas"
+                ],
+                "summary": "Gets a cinema",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.GetCinemaResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "deletes a cinema",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cinemas"
+                ],
+                "summary": "Deletes a cinema",
+                "parameters": [
+                    {
+                        "description": "name",
+                        "name": "name",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "location",
+                        "name": "location",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/cinemas/{id}/halls": {
+            "get": {
+                "description": "gets a list of halls for a given cinema",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "halls"
+                ],
+                "summary": "Gets a list of halls",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "cinema id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.GetHallsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "creates a hall for a given cinema",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "halls"
+                ],
+                "summary": "Creates a hall",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "cinema id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "name",
+                        "name": "name",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "seat arrangement",
+                        "name": "seat_arrangement",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "seat price",
+                        "name": "seat_price",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateHallResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/halls/{id}": {
+            "put": {
+                "description": "Updates a hall by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "halls"
+                ],
+                "summary": "Updates a hall",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "hall id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateHallResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes a hall by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "halls"
+                ],
+                "summary": "Deletes a hall",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "hall id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/halls/{id}/seats": {
+            "get": {
+                "responses": {}
+            },
+            "post": {
+                "description": "Creates a seat for a given hall",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "seats"
+                ],
+                "summary": "Creates a seat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "hall id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateSeatReponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/healthcheck": {
+            "get": {
+                "description": "gets a health check status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "checkouts"
+                ],
+                "summary": "Gets Health Check status",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.HealthCheckResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/movies": {
+            "get": {
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.GetMoviesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "sreates a movie",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "movies"
+                ],
+                "summary": "Creates a movie",
+                "parameters": [
+                    {
+                        "description": "title",
+                        "name": "title",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "runtime",
+                        "name": "runtime",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "year",
+                        "name": "year",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "genres",
+                        "name": "genres",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateMovieResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/movies/{id}": {
+            "get": {
+                "description": "gets a movie by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "movies"
+                ],
+                "summary": "Gets a movie",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.GetMovieResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateMovieResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules": {
+            "get": {
+                "description": "Gets a list of schedules by search paramaters",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedules"
+                ],
+                "summary": "Gets a list of schedules",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "movie_id",
+                        "name": "movie_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "hall_id",
+                        "name": "hall_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page number",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size",
+                        "name": "page_size",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "sort paramterers (id, price, starts_at, ends_at) prefix with - to sort descending",
+                        "name": "sort",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "creates a schedule for a given movie and hall",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedules"
+                ],
+                "summary": "Creates a schedule",
+                "parameters": [
+                    {
+                        "description": "movie_id",
+                        "name": "movie_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "hall_id",
+                        "name": "hall_id",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "description": "price",
+                        "name": "price",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "starts at",
+                        "name": "starts_at",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "ends at",
+                        "name": "ends_at",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}": {
+            "put": {
+                "description": "updates a schedule by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedules"
+                ],
+                "summary": "Updates a schedule",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "price",
+                        "name": "price",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "starts at",
+                        "name": "starts_at",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "ends at",
+                        "name": "ends_at",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "deletes a schedule by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "schedules"
+                ],
+                "summary": "Deletes a schedule",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.UpdateScheduleResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/schedules/{id}/tickets": {
+            "get": {
+                "description": "gets a list of tickets for a given schedule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Gets a list of tickets",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "schedule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "creates the tickets for a given schedule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Creates the tickets",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "schedule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/seats/{id}": {
+            "put": {
+                "description": "updates a seat by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "seats"
+                ],
+                "summary": "Updates a seat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "seat id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateSeatReponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "deletes a seat by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "seats"
+                ],
+                "summary": "Deletes a seat",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "seat id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/tickets/{id}/lock": {
+            "post": {
+                "description": "locks a ticket to a given user for some time",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Locks a ticket",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ticket id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.LockTicketResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/tickets/{id}/unlock": {
+            "post": {
+                "description": "unlocks a ticket",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tickets"
+                ],
+                "summary": "Unlocks a ticket",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ticket id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.LockTicketResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/tokens/activation": {
+            "put": {
+                "description": "activates a user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Activates a user",
+                "parameters": [
+                    {
+                        "description": "token",
+                        "name": "token",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.User"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "creates an activation token and sends it to the email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Creates an activation token",
+                "parameters": [
+                    {
+                        "description": "email of the user",
+                        "name": "email",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/tokens/authentication": {
+            "post": {
+                "description": "creates an auth token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Creates an auth token",
+                "parameters": [
+                    {
+                        "description": "email",
+                        "name": "email",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "password",
+                        "name": "password",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.CreateAuthenticationTokenResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
+        "/tokens/password-reset": {
+            "put": {
+                "description": "creates a password-reset token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Creates a password-reset token",
+                "parameters": [
+                    {
+                        "description": "email",
+                        "name": "email",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "creates a password-reset token and sends the token to the given email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "tokens"
+                ],
+                "summary": "Creates a password-reset token",
+                "parameters": [
+                    {
+                        "description": "email",
+                        "name": "email",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ViolationsMessage"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
+        },
         "/users": {
             "post": {
-                "description": "Create a new user by name, email, password",
+                "description": "creates a new user by name, email, password",
                 "consumes": [
                     "application/json"
                 ],
@@ -24,7 +1651,7 @@
                 "tags": [
                     "users"
                 ],
-                "summary": "Create a new user",
+                "summary": "Creates a new user",
                 "parameters": [
                     {
                         "description": "name of the user",
@@ -58,13 +1685,13 @@
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal.User"
+                            "$ref": "#/definitions/main.CreatedUserResponse"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "$ref": "#/definitions/main.Violations"
+                            "$ref": "#/definitions/main.ViolationsMessage"
                         }
                     },
                     "409": {
@@ -81,9 +1708,354 @@
                     }
                 }
             }
+        },
+        "/users/{id}": {
+            "get": {
+                "description": "gets The user Info by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Get User Info",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id of the user",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.GetUserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "updates the user Info by ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Updates User Info",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id of the user",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "new name of the user",
+                        "name": "name",
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal.User"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "deletes the user",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Delete User",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "id of the user",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseMessage"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/main.ResponseError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "internal.CheckoutItem": {
+            "type": "object",
+            "properties": {
+                "cinema": {
+                    "$ref": "#/definitions/internal.Cinema"
+                },
+                "hall": {
+                    "$ref": "#/definitions/internal.Hall"
+                },
+                "movie": {
+                    "$ref": "#/definitions/internal.Movie"
+                },
+                "schedule": {
+                    "$ref": "#/definitions/internal.Schedule"
+                },
+                "seat": {
+                    "$ref": "#/definitions/internal.Seat"
+                },
+                "ticket": {
+                    "$ref": "#/definitions/internal.Ticket"
+                }
+            }
+        },
+        "internal.Cinema": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ower_id": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.Hall": {
+            "type": "object",
+            "properties": {
+                "cinema_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "seat_arrangement": {
+                    "type": "string"
+                },
+                "seat_price": {
+                    "type": "number"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.MetaData": {
+            "type": "object",
+            "properties": {
+                "current_page": {
+                    "type": "integer"
+                },
+                "first_page": {
+                    "type": "integer"
+                },
+                "last_page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total_records": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.Movie": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "runtime": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.Schedule": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "ends_at": {
+                    "type": "string"
+                },
+                "hall_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "movie_id": {
+                    "type": "integer"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "starts_at": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.Seat": {
+            "type": "object",
+            "properties": {
+                "coordinates": {
+                    "type": "string"
+                },
+                "hall_id": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.Ticket": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "schedule_id": {
+                    "type": "integer"
+                },
+                "seat_id": {
+                    "type": "integer"
+                },
+                "state_changed_at": {
+                    "type": "string"
+                },
+                "state_id": {
+                    "$ref": "#/definitions/internal.TicketState"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal.TicketState": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2
+            ],
+            "x-enum-varnames": [
+                "TicketStateUnsold",
+                "TicketStateLocked",
+                "TicketStateSold"
+            ]
+        },
         "internal.User": {
             "type": "object",
             "properties": {
@@ -109,6 +2081,150 @@
                 }
             }
         },
+        "main.CreateAuthenticationTokenResponse": {
+            "type": "object",
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.CreateCinemaResponse": {
+            "type": "object",
+            "properties": {
+                "cinema": {
+                    "$ref": "#/definitions/internal.Cinema"
+                }
+            }
+        },
+        "main.CreateHallResponse": {
+            "type": "object",
+            "properties": {
+                "hall": {
+                    "$ref": "#/definitions/internal.Hall"
+                }
+            }
+        },
+        "main.CreateMovieResponse": {
+            "type": "object",
+            "properties": {
+                "movie": {
+                    "$ref": "#/definitions/internal.Movie"
+                }
+            }
+        },
+        "main.CreateScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "schedule": {
+                    "$ref": "#/definitions/internal.Schedule"
+                }
+            }
+        },
+        "main.CreateSeatReponse": {
+            "type": "object",
+            "properties": {
+                "seat": {
+                    "$ref": "#/definitions/internal.Seat"
+                }
+            }
+        },
+        "main.CreatedUserResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal.User"
+                }
+            }
+        },
+        "main.GetCheckoutResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.CheckoutItem"
+                    }
+                },
+                "price": {
+                    "type": "number"
+                }
+            }
+        },
+        "main.GetCinemaResponse": {
+            "type": "object",
+            "properties": {
+                "cinema": {
+                    "$ref": "#/definitions/internal.Cinema"
+                }
+            }
+        },
+        "main.GetHallsResponse": {
+            "type": "object",
+            "properties": {
+                "halls": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.Hall"
+                    }
+                }
+            }
+        },
+        "main.GetMovieResponse": {
+            "type": "object",
+            "properties": {
+                "movie": {
+                    "$ref": "#/definitions/internal.Movie"
+                }
+            }
+        },
+        "main.GetMoviesResponse": {
+            "type": "object",
+            "properties": {
+                "meta_data": {
+                    "$ref": "#/definitions/internal.MetaData"
+                },
+                "movies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal.Movie"
+                    }
+                }
+            }
+        },
+        "main.GetUserResponse": {
+            "type": "object",
+            "properties": {
+                "user": {
+                    "$ref": "#/definitions/internal.User"
+                }
+            }
+        },
+        "main.HealthCheckResponse": {
+            "type": "object",
+            "properties": {
+                "enviroment": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "main.LockTicketResponse": {
+            "type": "object",
+            "properties": {
+                "ticket": {
+                    "$ref": "#/definitions/internal.Ticket"
+                }
+            }
+        },
         "main.ResponseError": {
             "type": "object",
             "properties": {
@@ -127,10 +2243,48 @@
                 }
             }
         },
-        "main.Violations": {
+        "main.UpdateCinemaResponse": {
             "type": "object",
-            "additionalProperties": {
-                "type": "string"
+            "properties": {
+                "cinema": {
+                    "$ref": "#/definitions/internal.Cinema"
+                }
+            }
+        },
+        "main.UpdateHallResponse": {
+            "type": "object",
+            "properties": {
+                "hall": {
+                    "$ref": "#/definitions/internal.Hall"
+                }
+            }
+        },
+        "main.UpdateMovieResponse": {
+            "type": "object",
+            "properties": {
+                "movie": {
+                    "$ref": "#/definitions/internal.Movie"
+                }
+            }
+        },
+        "main.UpdateScheduleResponse": {
+            "type": "object",
+            "properties": {
+                "schedule": {
+                    "$ref": "#/definitions/internal.Schedule"
+                }
+            }
+        },
+        "main.ViolationsMessage": {
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "description": "errors",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
             }
         }
     }

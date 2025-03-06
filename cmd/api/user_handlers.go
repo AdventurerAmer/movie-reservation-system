@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"time"
 
@@ -10,18 +9,23 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+type CreatedUserResponse struct {
+	User    *internal.User `json:"user"`
+	Message string         `json:"message"`
+}
+
 // createUserHandler godoc
 //
-//	@Summary		Create a new user
-//	@Description	Create a new user by name, email, password
+//	@Summary		Creates a new user
+//	@Description	creates a new user by name, email, password
 //	@Tags			users
 //	@Accept			json
 //	@Produce		json
-//	@Param			name		body		string	true "name of the user"
-//	@Param			email		body		string	true "email of the user"
-//	@Param			password	body		string	true "password of the user"
-//	@Success		201			{object}	internal.User
-//	@Failure		400			{object}	Violations
+//	@Param			name		body		string	true	"name of the user"
+//	@Param			email		body		string	true	"email of the user"
+//	@Param			password	body		string	true	"password of the user"
+//	@Success		201			{object}	CreatedUserResponse
+//	@Failure		400			{object}	ViolationsMessage
 //	@Failure		409			{object}	ResponseMessage
 //	@Failure		500			{object}	ResponseError
 //	@Router			/users [post]
@@ -83,14 +87,26 @@ func (app *Application) createUserHandler(w http.ResponseWriter, r *http.Request
 		"token": token,
 	}
 	app.Go(app.SendMail(user.Email, ActivateUserTmpl, data))
-
-	res := map[string]any{
-		"user":    user,
-		"message": "activation token was send to the provided email",
-	}
+	res := CreatedUserResponse{User: user, Message: "activation token was send to the provided email"}
 	writeJSON(res, http.StatusCreated, w)
 }
 
+type GetUserResponse struct {
+	User *internal.User `json:"user"`
+}
+
+// getUserHandler godoc
+//
+//	@Summary		Get User Info
+//	@Description	gets The user Info by ID
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"id of the user"
+//	@Success		200	{object}	GetUserResponse
+//	@Failure		400	{object}	ResponseError
+//	@Failure		403	{object}	ResponseError
+//	@Router			/users/{id} [get]
 func (app *Application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -106,12 +122,27 @@ func (app *Application) getUserHandler(w http.ResponseWriter, r *http.Request) {
 		writeForbidden(w)
 		return
 	}
-	res := map[string]any{
-		"user": u,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetUserResponse{User: u}, http.StatusOK, w)
 }
 
+type UpdateUserResponse struct {
+	User *internal.User `json:"user"`
+}
+
+// updateUserHandler godoc
+//
+//	@Summary		Updates User Info
+//	@Description	updates the user Info by ID
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		int		true	"id of the user"
+//	@Param			name	body		string	false	"new name of the user"
+//	@Success		200		{object}	internal.User
+//	@Failure		400		{object}	ResponseError
+//	@Failure		403		{object}	ResponseError
+//	@Failure		500		{object}	ResponseError
+//	@Router			/users/{id} [put]
 func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -155,12 +186,21 @@ func (app *Application) updateUserHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	res := map[string]any{
-		"user": u,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(UpdateUserResponse{User: u}, http.StatusOK, w)
 }
 
+// deleteUserHandler godoc
+//
+//	@Summary		Delete User
+//	@Description	deletes the user
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"id of the user"
+//	@Success		200	{object}	ResponseMessage
+//	@Failure		403	{object}	ResponseError
+//	@Failure		500	{object}	ResponseError
+//	@Router			/users/{id} [delete]
 func (app *Application) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -184,262 +224,5 @@ func (app *Application) deleteUserHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"message": "user delete successfully",
-	}
-	writeJSON(res, http.StatusOK, w)
-}
-
-func (app *Application) createUserActivationTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email *string `json:"email"`
-	}
-
-	if err := readJSON(r, &req); err != nil {
-		writeBadRequest(err, w)
-		return
-	}
-
-	v := NewValidator()
-	v.CheckEmail(req.Email)
-
-	if v.HasErrors() {
-		writeErrors(v, w)
-		return
-	}
-
-	u, err := app.storage.Users.GetByEmail(*req.Email)
-	if err != nil {
-		log.Println(err)
-		writeServerErr(err, w)
-		return
-	}
-	if u == nil {
-		res := map[string]any{"message": "invalid email"}
-		writeJSON(res, http.StatusConflict, w)
-		return
-	}
-
-	if u.IsActivated {
-		res := map[string]any{"message": "user is already activated"}
-		writeJSON(res, http.StatusConflict, w)
-		return
-	}
-
-	err = app.storage.Tokens.DeleteAll(u.ID, []internal.TokenScope{internal.TokenScopeActivation})
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-
-	token := internal.GenerateToken()
-	_, err = app.storage.Tokens.Create(u.ID, internal.TokenScopeActivation, token, 10*time.Minute)
-	if err != nil {
-		log.Println(err)
-		writeServerErr(err, w)
-		return
-	}
-
-	data := map[string]any{
-		"token": token,
-	}
-	app.Go(app.SendMail(u.Email, ActivateUserTmpl, data))
-
-	res := map[string]any{
-		"message": "activation token was send to the provided email",
-	}
-	writeJSON(res, http.StatusCreated, w)
-}
-
-func (app *Application) activateUserHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Token string `json:"token"`
-	}
-	if err := readJSON(r, &req); err != nil {
-		writeBadRequest(err, w)
-		return
-	}
-	u, err := app.storage.Tokens.GetUser(internal.TokenScopeActivation, req.Token)
-	if err != nil {
-		log.Println(err)
-		writeServerErr(err, w)
-		return
-	}
-	if u == nil {
-		writeError(errors.New("invalid token"), http.StatusConflict, w)
-		return
-	}
-
-	if u.IsActivated {
-		writeError(errors.New("invalid token"), http.StatusConflict, w)
-		return
-	}
-
-	u.IsActivated = true
-	err = app.storage.Users.Update(u)
-	if err != nil {
-		log.Println(err)
-		writeServerErr(err, w)
-		return
-	}
-
-	res := map[string]any{
-		"user": u,
-	}
-	writeJSON(res, http.StatusOK, w)
-}
-
-func (app *Application) createAuthenticationTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email    *string `json:"email"`
-		Password *string `json:"password"`
-	}
-	if err := readJSON(r, &req); err != nil {
-		writeBadRequest(err, w)
-		return
-	}
-	v := NewValidator()
-	v.CheckEmail(req.Email)
-	v.CheckPassword(req.Password)
-	if v.HasErrors() {
-		writeErrors(v, w)
-		return
-	}
-	u, err := app.storage.Users.GetByEmail(*req.Email)
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-	if u == nil {
-		writeError(errors.New("invalid credentials"), http.StatusUnauthorized, w)
-		return
-	}
-	if bcrypt.CompareHashAndPassword(u.PasswordHash, []byte(*req.Password)) != nil {
-		writeError(errors.New("invalid credentials"), http.StatusUnauthorized, w)
-		return
-	}
-
-	err = app.storage.Tokens.DeleteAll(u.ID, []internal.TokenScope{internal.TokenScopeAuthentication})
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-
-	token := internal.GenerateToken()
-	_, err = app.storage.Tokens.Create(u.ID, internal.TokenScopeAuthentication, token, 24*time.Hour)
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-	res := map[string]any{
-		"token": token,
-	}
-	writeJSON(res, http.StatusCreated, w)
-}
-
-func (app *Application) createPasswordResetTokenHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Email *string `json:"email"`
-	}
-
-	if err := readJSON(r, &req); err != nil {
-		writeBadRequest(err, w)
-		return
-	}
-
-	v := NewValidator()
-	v.CheckEmail(req.Email)
-
-	if v.HasErrors() {
-		writeErrors(v, w)
-		return
-	}
-
-	u, err := app.storage.Users.GetByEmail(*req.Email)
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-	if u == nil {
-		res := map[string]any{"message": "invalid email"}
-		writeJSON(res, http.StatusConflict, w)
-		return
-	}
-
-	err = app.storage.Tokens.DeleteAll(u.ID, []internal.TokenScope{internal.TokenScopePasswordReset})
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-
-	token := internal.GenerateToken()
-	_, err = app.storage.Tokens.Create(u.ID, internal.TokenScopePasswordReset, token, 10*time.Minute)
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-
-	data := map[string]any{
-		"token": token,
-	}
-	app.Go(app.SendMail(u.Email, ResetPasswordTempl, data))
-
-	res := map[string]any{
-		"message": "password token was send to the provided email",
-	}
-	writeJSON(res, http.StatusCreated, w)
-}
-
-func (app *Application) resetPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Password *string `json:"password"`
-		Token    *string `json:"token"`
-	}
-	if err := readJSON(r, &req); err != nil {
-		writeBadRequest(err, w)
-		return
-	}
-	v := NewValidator()
-	v.CheckPassword(req.Password)
-	v.Check(req.Token != nil, "token", "must be provided")
-	if req.Token != nil {
-		v.Check(*req.Token != "", "token", "must be provided")
-	}
-	if v.HasErrors() {
-		writeErrors(v, w)
-		return
-	}
-	u, err := app.storage.Tokens.GetUser(internal.TokenScopePasswordReset, *req.Token)
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-	if u == nil {
-		writeError(errors.New("invalid token"), http.StatusConflict, w)
-		return
-	}
-
-	err = app.storage.Tokens.DeleteAll(u.ID, []internal.TokenScope{internal.TokenScopePasswordReset, internal.TokenScopeAuthentication})
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte(*req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-
-	u.PasswordHash = passwordHash
-	err = app.storage.Users.Update(u)
-	if err != nil {
-		writeServerErr(err, w)
-		return
-	}
-
-	res := map[string]any{
-		"message": "password was reset",
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(ResponseMessage{Message: "user delete successfully"}, http.StatusOK, w)
 }

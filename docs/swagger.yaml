@@ -1,5 +1,139 @@
 basePath: /v1
 definitions:
+  internal.CheckoutItem:
+    properties:
+      cinema:
+        $ref: '#/definitions/internal.Cinema'
+      hall:
+        $ref: '#/definitions/internal.Hall'
+      movie:
+        $ref: '#/definitions/internal.Movie'
+      schedule:
+        $ref: '#/definitions/internal.Schedule'
+      seat:
+        $ref: '#/definitions/internal.Seat'
+      ticket:
+        $ref: '#/definitions/internal.Ticket'
+    type: object
+  internal.Cinema:
+    properties:
+      id:
+        type: integer
+      location:
+        type: string
+      name:
+        type: string
+      ower_id:
+        type: integer
+      version:
+        type: integer
+    type: object
+  internal.Hall:
+    properties:
+      cinema_id:
+        type: integer
+      id:
+        type: integer
+      name:
+        type: string
+      seat_arrangement:
+        type: string
+      seat_price:
+        type: number
+      version:
+        type: integer
+    type: object
+  internal.MetaData:
+    properties:
+      current_page:
+        type: integer
+      first_page:
+        type: integer
+      last_page:
+        type: integer
+      page_size:
+        type: integer
+      total_records:
+        type: integer
+    type: object
+  internal.Movie:
+    properties:
+      created_at:
+        type: string
+      genres:
+        items:
+          type: string
+        type: array
+      id:
+        type: integer
+      runtime:
+        type: integer
+      title:
+        type: string
+      version:
+        type: integer
+      year:
+        type: integer
+    type: object
+  internal.Schedule:
+    properties:
+      created_at:
+        type: string
+      ends_at:
+        type: string
+      hall_id:
+        type: integer
+      id:
+        type: integer
+      movie_id:
+        type: integer
+      price:
+        type: number
+      starts_at:
+        type: string
+      version:
+        type: integer
+    type: object
+  internal.Seat:
+    properties:
+      coordinates:
+        type: string
+      hall_id:
+        type: integer
+      id:
+        type: integer
+      version:
+        type: integer
+    type: object
+  internal.Ticket:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      price:
+        type: number
+      schedule_id:
+        type: integer
+      seat_id:
+        type: integer
+      state_changed_at:
+        type: string
+      state_id:
+        $ref: '#/definitions/internal.TicketState'
+      version:
+        type: integer
+    type: object
+  internal.TicketState:
+    enum:
+    - 0
+    - 1
+    - 2
+    type: integer
+    x-enum-varnames:
+    - TicketStateUnsold
+    - TicketStateLocked
+    - TicketStateSold
   internal.User:
     properties:
       created_at:
@@ -18,6 +152,97 @@ definitions:
         description: Name
         type: string
     type: object
+  main.CreateAuthenticationTokenResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  main.CreateCinemaResponse:
+    properties:
+      cinema:
+        $ref: '#/definitions/internal.Cinema'
+    type: object
+  main.CreateHallResponse:
+    properties:
+      hall:
+        $ref: '#/definitions/internal.Hall'
+    type: object
+  main.CreateMovieResponse:
+    properties:
+      movie:
+        $ref: '#/definitions/internal.Movie'
+    type: object
+  main.CreateScheduleResponse:
+    properties:
+      schedule:
+        $ref: '#/definitions/internal.Schedule'
+    type: object
+  main.CreateSeatReponse:
+    properties:
+      seat:
+        $ref: '#/definitions/internal.Seat'
+    type: object
+  main.CreatedUserResponse:
+    properties:
+      message:
+        type: string
+      user:
+        $ref: '#/definitions/internal.User'
+    type: object
+  main.GetCheckoutResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/internal.CheckoutItem'
+        type: array
+      price:
+        type: number
+    type: object
+  main.GetCinemaResponse:
+    properties:
+      cinema:
+        $ref: '#/definitions/internal.Cinema'
+    type: object
+  main.GetHallsResponse:
+    properties:
+      halls:
+        items:
+          $ref: '#/definitions/internal.Hall'
+        type: array
+    type: object
+  main.GetMovieResponse:
+    properties:
+      movie:
+        $ref: '#/definitions/internal.Movie'
+    type: object
+  main.GetMoviesResponse:
+    properties:
+      meta_data:
+        $ref: '#/definitions/internal.MetaData'
+      movies:
+        items:
+          $ref: '#/definitions/internal.Movie'
+        type: array
+    type: object
+  main.GetUserResponse:
+    properties:
+      user:
+        $ref: '#/definitions/internal.User'
+    type: object
+  main.HealthCheckResponse:
+    properties:
+      enviroment:
+        type: string
+      status:
+        type: string
+      version:
+        type: string
+    type: object
+  main.LockTicketResponse:
+    properties:
+      ticket:
+        $ref: '#/definitions/internal.Ticket'
+    type: object
   main.ResponseError:
     properties:
       error:
@@ -30,9 +255,33 @@ definitions:
         description: Message
         type: string
     type: object
-  main.Violations:
-    additionalProperties:
-      type: string
+  main.UpdateCinemaResponse:
+    properties:
+      cinema:
+        $ref: '#/definitions/internal.Cinema'
+    type: object
+  main.UpdateHallResponse:
+    properties:
+      hall:
+        $ref: '#/definitions/internal.Hall'
+    type: object
+  main.UpdateMovieResponse:
+    properties:
+      movie:
+        $ref: '#/definitions/internal.Movie'
+    type: object
+  main.UpdateScheduleResponse:
+    properties:
+      schedule:
+        $ref: '#/definitions/internal.Schedule'
+    type: object
+  main.ViolationsMessage:
+    properties:
+      errors:
+        additionalProperties:
+          type: string
+        description: errors
+        type: object
     type: object
 host: https://localhost:8080
 info:
@@ -43,11 +292,1086 @@ info:
   title: Movie Reservation System API
   version: "1.0"
 paths:
+  /checkout:
+    get:
+      consumes:
+      - application/json
+      description: checks out a user
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.GetCheckoutResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Checks out a user
+      tags:
+      - checkouts
+  /cinemas:
+    get:
+      consumes:
+      - application/json
+      description: gets a list of cinemas by search parameters
+      parameters:
+      - description: name
+        in: query
+        name: name
+        type: string
+      - description: location
+        in: query
+        name: location
+        type: string
+      - description: page number
+        in: query
+        name: page
+        type: integer
+      - description: page size
+        in: query
+        name: page_size
+        type: integer
+      - description: sort params are (name, location) prefix with - to sort descending
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.CreateCinemaResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Get a list of cinemas
+      tags:
+      - cinemas
+    post:
+      consumes:
+      - application/json
+      description: creates a cinema
+      parameters:
+      - description: name
+        in: body
+        name: name
+        required: true
+        schema:
+          type: string
+      - description: location
+        in: body
+        name: location
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.CreateCinemaResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates a cinema
+      tags:
+      - cinemas
+  /cinemas/{id}:
+    get:
+      consumes:
+      - application/json
+      description: gets a cinema by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GetCinemaResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Gets a cinema
+      tags:
+      - cinemas
+    put:
+      consumes:
+      - application/json
+      description: deletes a cinema
+      parameters:
+      - description: name
+        in: body
+        name: name
+        schema:
+          type: string
+      - description: location
+        in: body
+        name: location
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Deletes a cinema
+      tags:
+      - cinemas
+  /cinemas/{id}/halls:
+    get:
+      consumes:
+      - application/json
+      description: gets a list of halls for a given cinema
+      parameters:
+      - description: cinema id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GetHallsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Gets a list of halls
+      tags:
+      - halls
+    post:
+      consumes:
+      - application/json
+      description: creates a hall for a given cinema
+      parameters:
+      - description: cinema id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: name
+        in: body
+        name: name
+        schema:
+          type: string
+      - description: seat arrangement
+        in: body
+        name: seat_arrangement
+        schema:
+          type: string
+      - description: seat price
+        in: body
+        name: seat_price
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.CreateHallResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates a hall
+      tags:
+      - halls
+  /halls/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Deletes a hall by id
+      parameters:
+      - description: hall id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Deletes a hall
+      tags:
+      - halls
+    put:
+      consumes:
+      - application/json
+      description: Updates a hall by id
+      parameters:
+      - description: hall id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.UpdateHallResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Updates a hall
+      tags:
+      - halls
+  /halls/{id}/seats:
+    get:
+      responses: {}
+    post:
+      consumes:
+      - application/json
+      description: Creates a seat for a given hall
+      parameters:
+      - description: hall id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.CreateSeatReponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates a seat
+      tags:
+      - seats
+  /healthcheck:
+    get:
+      consumes:
+      - application/json
+      description: gets a health check status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.HealthCheckResponse'
+      summary: Gets Health Check status
+      tags:
+      - checkouts
+  /movies:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GetMoviesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+    post:
+      consumes:
+      - application/json
+      description: sreates a movie
+      parameters:
+      - description: title
+        in: body
+        name: title
+        required: true
+        schema:
+          type: string
+      - description: runtime
+        in: body
+        name: runtime
+        required: true
+        schema:
+          type: integer
+      - description: year
+        in: body
+        name: year
+        required: true
+        schema:
+          type: integer
+      - description: genres
+        in: body
+        name: genres
+        required: true
+        schema:
+          type: array
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.CreateMovieResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates a movie
+      tags:
+      - movies
+  /movies/{id}:
+    delete:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+    get:
+      consumes:
+      - application/json
+      description: gets a movie by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GetMovieResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Gets a movie
+      tags:
+      - movies
+    put:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.UpdateMovieResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+  /schedules:
+    get:
+      consumes:
+      - application/json
+      description: Gets a list of schedules by search paramaters
+      parameters:
+      - description: movie_id
+        in: query
+        name: movie_id
+        required: true
+        type: integer
+      - description: hall_id
+        in: query
+        name: hall_id
+        required: true
+        type: integer
+      - description: page number
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: page size
+        in: query
+        name: page_size
+        required: true
+        type: integer
+      - description: sort paramterers (id, price, starts_at, ends_at) prefix with
+          - to sort descending
+        in: query
+        name: sort
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.CreateScheduleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Gets a list of schedules
+      tags:
+      - schedules
+    post:
+      consumes:
+      - application/json
+      description: creates a schedule for a given movie and hall
+      parameters:
+      - description: movie_id
+        in: body
+        name: movie_id
+        required: true
+        schema:
+          type: integer
+      - description: hall_id
+        in: body
+        name: hall_id
+        required: true
+        schema:
+          type: integer
+      - description: price
+        in: body
+        name: price
+        required: true
+        schema:
+          type: string
+      - description: starts at
+        in: body
+        name: starts_at
+        required: true
+        schema:
+          type: string
+      - description: ends at
+        in: body
+        name: ends_at
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.CreateScheduleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates a schedule
+      tags:
+      - schedules
+  /schedules/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: deletes a schedule by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.UpdateScheduleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Deletes a schedule
+      tags:
+      - schedules
+    put:
+      consumes:
+      - application/json
+      description: updates a schedule by id
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: price
+        in: body
+        name: price
+        required: true
+        schema:
+          type: string
+      - description: starts at
+        in: body
+        name: starts_at
+        required: true
+        schema:
+          type: string
+      - description: ends at
+        in: body
+        name: ends_at
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.UpdateScheduleResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Updates a schedule
+      tags:
+      - schedules
+  /schedules/{id}/tickets:
+    get:
+      consumes:
+      - application/json
+      description: gets a list of tickets for a given schedule
+      parameters:
+      - description: schedule id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Gets a list of tickets
+      tags:
+      - tickets
+    post:
+      consumes:
+      - application/json
+      description: creates the tickets for a given schedule
+      parameters:
+      - description: schedule id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates the tickets
+      tags:
+      - tickets
+  /seats/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: deletes a seat by id
+      parameters:
+      - description: seat id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Deletes a seat
+      tags:
+      - seats
+    put:
+      consumes:
+      - application/json
+      description: updates a seat by id
+      parameters:
+      - description: seat id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.CreateSeatReponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Updates a seat
+      tags:
+      - seats
+  /tickets/{id}/lock:
+    post:
+      consumes:
+      - application/json
+      description: locks a ticket to a given user for some time
+      parameters:
+      - description: ticket id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.LockTicketResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Locks a ticket
+      tags:
+      - tickets
+  /tickets/{id}/unlock:
+    post:
+      consumes:
+      - application/json
+      description: unlocks a ticket
+      parameters:
+      - description: ticket id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.LockTicketResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Unlocks a ticket
+      tags:
+      - tickets
+  /tokens/activation:
+    post:
+      consumes:
+      - application/json
+      description: creates an activation token and sends it to the email
+      parameters:
+      - description: email of the user
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates an activation token
+      tags:
+      - tokens
+    put:
+      consumes:
+      - application/json
+      description: activates a user
+      parameters:
+      - description: token
+        in: body
+        name: token
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.User'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Activates a user
+      tags:
+      - tokens
+  /tokens/authentication:
+    post:
+      consumes:
+      - application/json
+      description: creates an auth token
+      parameters:
+      - description: email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      - description: password
+        in: body
+        name: password
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.CreateAuthenticationTokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates an auth token
+      tags:
+      - tokens
+  /tokens/password-reset:
+    post:
+      consumes:
+      - application/json
+      description: creates a password-reset token and sends the token to the given
+        email
+      parameters:
+      - description: email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates a password-reset token
+      tags:
+      - tokens
+    put:
+      consumes:
+      - application/json
+      description: creates a password-reset token
+      parameters:
+      - description: email
+        in: body
+        name: email
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ViolationsMessage'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Creates a password-reset token
+      tags:
+      - tokens
   /users:
     post:
       consumes:
       - application/json
-      description: Create a new user by name, email, password
+      description: creates a new user by name, email, password
       parameters:
       - description: name of the user
         in: body
@@ -73,11 +1397,11 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal.User'
+            $ref: '#/definitions/main.CreatedUserResponse'
         "400":
           description: Bad Request
           schema:
-            $ref: '#/definitions/main.Violations'
+            $ref: '#/definitions/main.ViolationsMessage'
         "409":
           description: Conflict
           schema:
@@ -86,7 +1410,101 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/main.ResponseError'
-      summary: Create a new user
+      summary: Creates a new user
+      tags:
+      - users
+  /users/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: deletes the user
+      parameters:
+      - description: id of the user
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.ResponseMessage'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Delete User
+      tags:
+      - users
+    get:
+      consumes:
+      - application/json
+      description: gets The user Info by ID
+      parameters:
+      - description: id of the user
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/main.GetUserResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Get User Info
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      description: updates the user Info by ID
+      parameters:
+      - description: id of the user
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: new name of the user
+        in: body
+        name: name
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal.User'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/main.ResponseError'
+      summary: Updates User Info
       tags:
       - users
 swagger: "2.0"

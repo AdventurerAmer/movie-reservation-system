@@ -6,9 +6,27 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/AdventurerAmer/movie-reservation-system/internal"
 	"github.com/shopspring/decimal"
 )
 
+type CreateCinemaResponse struct {
+	Cinema *internal.Cinema `json:"cinema"`
+}
+
+// createCinemaHandler godoc
+//
+//	@Summary		Creates a cinema
+//	@Description	creates a cinema
+//	@Tags			cinemas
+//	@Accept			json
+//	@Produce		json
+//	@Param			name		body		string	true	"name"
+//	@Param			location	body		string	true	"location"
+//	@Success		201			{object}	CreateCinemaResponse
+//	@Failure		400			{object}	ViolationsMessage
+//	@Failure		500			{object}	ResponseError
+//	@Router			/cinemas [post]
 func (app *Application) createCinemaHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name     string `json:"name"`
@@ -40,12 +58,25 @@ func (app *Application) createCinemaHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	res := map[string]any{
-		"cinema": c,
-	}
-	writeJSON(res, http.StatusCreated, w)
+	writeJSON(CreateCinemaResponse{Cinema: c}, http.StatusCreated, w)
 }
 
+type GetCinemaResponse struct {
+	Cinema *internal.Cinema `json:"cinema"`
+}
+
+// getCinemaHandler godoc
+//
+//	@Summary		Gets a cinema
+//	@Description	gets a cinema by id
+//	@Tags			cinemas
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"id"
+//	@Success		200	{object}	GetCinemaResponse
+//	@Failure		404	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/cinemas/{id} [get]
 func (app *Application) getCinemaHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -61,12 +92,31 @@ func (app *Application) getCinemaHandler(w http.ResponseWriter, r *http.Request)
 		writeNotFound(w)
 		return
 	}
-	res := map[string]any{
-		"cinema": c,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetCinemaResponse{Cinema: c}, http.StatusOK, w)
 }
 
+type GetCinemasResponse struct {
+	Cinemas  []internal.Cinema  `json:"cinemas"`
+	MetaData *internal.MetaData `json:"meta_data"`
+}
+
+// getCinemasHandler godoc
+//
+//	@Summary		Get a list of cinemas
+//	@Description	gets a list of cinemas by search parameters
+//	@Tags			cinemas
+//	@Accept			json
+//	@Produce		json
+//	@Param			name		query		string	false	"name"
+//	@Param			location	query		string	false	"location"
+//	@Param			page		query		int		false	"page number"
+//	@Param			page_size	query		int		false	"page size"
+//	@Param			sort		query		string	false	"sort params are (name, location) prefix with - to sort descending"
+//
+//	@Success		200			{object}	CreateCinemaResponse
+//	@Failure		404			{object}	ResponseMessage
+//	@Failure		500			{object}	ResponseError
+//	@Router			/cinemas [get]
 func (app *Application) getCinemasHandler(w http.ResponseWriter, r *http.Request) {
 	v := NewValidator()
 
@@ -87,18 +137,32 @@ func (app *Application) getCinemasHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	cinemas, meta, err := app.storage.Cinemas.GetAll(name, location, page, pageSize, sort)
+	cinemas, metaData, err := app.storage.Cinemas.GetAll(name, location, page, pageSize, sort)
 	if err != nil {
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"cinemas": cinemas,
-		"meta":    meta,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetCinemasResponse{Cinemas: cinemas, MetaData: metaData}, http.StatusOK, w)
 }
 
+type UpdateCinemaResponse struct {
+	Cinema *internal.Cinema `json:"cinema"`
+}
+
+// updateCinemaHandler godoc
+//
+//	@Summary		Updates a cinema
+//	@Description	updates a cinema
+//	@Tags			cinemas
+//	@Accept			json
+//	@Produce		json
+//	@Param			name		body		string	false	"name"
+//	@Param			location	body		string	false	"location"
+//	@Success		200			{object}	UpdateCinemaResponse
+//	@Failure		404			{object}	ResponseMessage
+//	@Failure		409			{object}	ResponseMessage
+//	@Failure		500			{object}	ResponseError
+//	@Router			/cinemas/{id} [put]
 func (app *Application) updateCinemaHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -163,12 +227,23 @@ func (app *Application) updateCinemaHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	res := map[string]any{
-		"cinema": c,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(UpdateCinemaResponse{Cinema: c}, http.StatusOK, w)
 }
 
+// deleteCinemaHandler godoc
+//
+//	@Summary		Deletes a cinema
+//	@Description	deletes a cinema
+//	@Tags			cinemas
+//	@Accept			json
+//	@Produce		json
+//	@Param			name		body		string	false	"name"
+//	@Param			location	body		string	false	"location"
+//	@Success		200			{object}	ResponseMessage
+//	@Failure		404			{object}	ResponseMessage
+//	@Failure		409			{object}	ResponseMessage
+//	@Failure		500			{object}	ResponseError
+//	@Router			/cinemas/{id} [put]
 func (app *Application) deleteCinemaHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -198,12 +273,30 @@ func (app *Application) deleteCinemaHandler(w http.ResponseWriter, r *http.Reque
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"message": "resource deleted successfully",
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(ResponseMessage{Message: "resource deleted successfully"}, http.StatusOK, w)
 }
 
+type CreateHallResponse struct {
+	Hall *internal.Hall `json:"hall"`
+}
+
+// createHallHandler godoc
+//
+//	@Summary		Creates a hall
+//	@Description	creates a hall for a given cinema
+//	@Tags			halls
+//	@Accept			json
+//	@Produce		json
+//	@Param			id					path		int		true	"cinema id"
+//	@Param			name				body		string	false	"name"
+//	@Param			seat_arrangement	body		string	false	"seat arrangement"
+//	@Param			seat_price			body		string	false	"seat price"
+//	@Success		201					{object}	CreateHallResponse
+//	@Failure		400					{object}	ViolationsMessage
+//
+//	@Failure		409					{object}	ResponseMessage
+//	@Failure		500					{object}	ResponseError
+//	@Router			/cinemas/{id}/halls [post]
 func (app *Application) createHallHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -255,12 +348,25 @@ func (app *Application) createHallHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"hall": h,
-	}
-	writeJSON(res, http.StatusCreated, w)
+	writeJSON(CreateHallResponse{Hall: h}, http.StatusCreated, w)
 }
 
+type GetHallsResponse struct {
+	Halls []internal.Hall `json:"halls"`
+}
+
+// getHallsHandler godoc
+//
+//	@Summary		Gets a list of halls
+//	@Description	gets a list of halls for a given cinema
+//	@Tags			halls
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"cinema id"
+//	@Success		200	{object}	GetHallsResponse
+//	@Failure		400	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/cinemas/{id}/halls [get]
 func (app *Application) getHallsHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -272,12 +378,27 @@ func (app *Application) getHallsHandler(w http.ResponseWriter, r *http.Request) 
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"halls": halls,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetHallsResponse{Halls: halls}, http.StatusOK, w)
 }
 
+type UpdateHallResponse struct {
+	Hall *internal.Hall `json:"hall"`
+}
+
+// updateHallHandler godoc
+//
+//	@Summary		Updates a hall
+//	@Description	Updates a hall by id
+//	@Tags			halls
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"hall id"
+//	@Success		200	{object}	UpdateHallResponse
+//	@Failure		400	{object}	ResponseMessage
+//	@Failure		400	{object}	ViolationsMessage
+//	@Failure		409	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/halls/{id} [put]
 func (app *Application) updateHallHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -339,12 +460,23 @@ func (app *Application) updateHallHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"hall": h,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(UpdateHallResponse{Hall: h}, http.StatusOK, w)
 }
 
+// deleteHallHandler godoc
+//
+//	@Summary		Deletes a hall
+//	@Description	Deletes a hall by id
+//	@Tags			halls
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"hall id"
+//	@Success		200	{object}	ResponseMessage
+//	@Failure		400	{object}	ResponseMessage
+//	@Failure		404	{object}	ViolationsMessage
+//	@Failure		409	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/halls/{id} [delete]
 func (app *Application) deleteHallHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -374,12 +506,27 @@ func (app *Application) deleteHallHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"message": "resource deleted successfully",
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(ResponseMessage{Message: "resource deleted successfully"}, http.StatusOK, w)
 }
 
+type CreateSeatReponse struct {
+	Seat *internal.Seat `json:"seat"`
+}
+
+// createSeatHandler godoc
+//
+//	@Summary		Creates a seat
+//	@Description	Creates a seat for a given hall
+//	@Tags			seats
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"hall id"
+//	@Success		201	{object}	CreateSeatReponse
+//	@Failure		400	{object}	ViolationsMessage
+//	@Failure		404	{object}	ResponseMessage
+//	@Failure		409	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//	@Router			/halls/{id}/seats [post]
 func (app *Application) createSeatHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -422,12 +569,26 @@ func (app *Application) createSeatHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"seat": seat,
-	}
-	writeJSON(res, http.StatusCreated, w)
+	writeJSON(CreateSeatReponse{Seat: seat}, http.StatusCreated, w)
 }
 
+type GetSeatsResponse struct {
+	Seats []internal.Seat `json:"seats"`
+}
+
+// getSeatsHandler godoc
+//
+//	@Summary		Gets a list of seats
+//	@Description	gets a list of seats for a given hall
+//	@Tags			seats
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"hall id"
+//	@Success		201	{object}	CreateSeatReponse
+//	@Failure		400	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+
+//	@Router	/halls/{id}/seats [get]
 func (app *Application) getSeatsHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -439,12 +600,29 @@ func (app *Application) getSeatsHandler(w http.ResponseWriter, r *http.Request) 
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"seats": seats,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(GetSeatsResponse{Seats: seats}, http.StatusOK, w)
 }
 
+type UpdateSeatReponse struct {
+	Seat *internal.Seat `json:"seat"`
+}
+
+// updateSeatHandler godoc
+//
+//	@Summary		Updates a seat
+//	@Description	updates a seat by id
+//	@Tags			seats
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"seat id"
+//	@Success		201	{object}	CreateSeatReponse
+//	@Failure		400	{object}	ResponseMessage
+//	@Failure		400	{object}	ViolationsMessage
+//	@Failure		404	{object}	ResponseMessage
+//	@Failure		409	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//
+//	@Router			/seats/{id} [put]
 func (app *Application) updateSeatHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -490,12 +668,25 @@ func (app *Application) updateSeatHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"seat": s,
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(UpdateSeatReponse{Seat: s}, http.StatusOK, w)
 }
 
+// deleteSeatHandler godoc
+//
+//	@Summary		Deletes a seat
+//	@Description	deletes a seat by id
+//	@Tags			seats
+//	@Accept			json
+//	@Produce		json
+//	@Param			id	path		int	true	"seat id"
+//	@Success		200	{object}	ResponseMessage
+//	@Failure		400	{object}	ResponseMessage
+//	@Failure		400	{object}	ViolationsMessage
+//	@Failure		404	{object}	ResponseMessage
+//	@Failure		409	{object}	ResponseMessage
+//	@Failure		500	{object}	ResponseError
+//
+//	@Router			/seats/{id} [delete]
 func (app *Application) deleteSeatHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := getIDFromPathValue(r)
 	if err != nil {
@@ -527,8 +718,5 @@ func (app *Application) deleteSeatHandler(w http.ResponseWriter, r *http.Request
 		writeServerErr(err, w)
 		return
 	}
-	res := map[string]any{
-		"message": "resouce delete successfully",
-	}
-	writeJSON(res, http.StatusOK, w)
+	writeJSON(ResponseMessage{Message: "resouce delete successfully"}, http.StatusOK, w)
 }
