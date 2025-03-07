@@ -38,8 +38,8 @@ migrate_force:
 migrate_version:
 	@migrate -database=${DB_DSN} -path=./migrations version
 
-.PHONY: generate_tls_certs
-generate_certs:
+.PHONY: generate_tls_cert
+generate_cert:
 	@openssl genrsa -out tls/key.pem 2048
 	@openssl req -new -key tls/key.pem -out tls/cert.pem
 	@openssl x509 -req -days 365 -in tls/cert.pem -signkey tls/key.pem -out tls/cert.pem
