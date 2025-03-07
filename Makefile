@@ -10,6 +10,10 @@ run: build
 test:
 	@go test -race -v ./...
 
+.PHONY: create_db
+create_db:
+	@psql ${DB_DSN} -tc "SELECT 1 FROM pg_database WHERE datname = 'mrs'" | grep -q 1 || psql -U postgres -c "CREATE DATABASE mrs"
+
 .PHONY: migrate_create
 migrate_create:
 	@migrate -database=${DB_DSN} create -seq -ext=sql -dir=./migrations $(name)
@@ -18,11 +22,13 @@ migrate_create:
 migrate_up:
 	@migrate -database=${DB_DSN} -path=./migrations up 1
 
+.PHONY: migrate_to_latest
+migrate_to_latest:
+	@migrate -database=${DB_DSN} -path=./migrations up
 
 .PHONY: migrate_down
 migrate_down:
 	@migrate -database=${DB_DSN} -path=./migrations down 1
-
 
 .PHONY: migrate_force
 migrate_force:
@@ -38,7 +44,11 @@ generate_certs:
 	@openssl req -new -key tls/key.pem -out tls/cert.pem
 	@openssl x509 -req -days 365 -in tls/cert.pem -signkey tls/key.pem -out tls/cert.pem
 	@openssl x509 -in tls/cert.pem -text -noout
-	
+
+.PHONY: stripe_listen
+stripe_listen:
+	@stripe listen --forward-to https://localhost:${PORT}
+
 .PHONY: generate_docs
 generate_docs:
 	@swag fmt -d ./cmd/api

@@ -1,0 +1,23 @@
+export ENV='development'
+export PORT=8080
+
+export DB_DSN='postgres://postgres:postgres@localhost/mrs?sslmode=disable'
+
+export DB_MAX_IDEL_CONNS=25
+export DB_MAX_OPEN_CONNS=25
+export DB_MAX_CONN_IDEL_TIME='15m'
+export DB_QUERY_TIMEOUT='5s'
+
+export SMTP_HOST=
+export SMTP_PORT=
+export SMTP_USERNAME=
+export SMTP_PASSWORD=
+export SMTP_SENDER=
+
+export LIMITER_MAX_RPS=10
+export LIMITER_BURST=10
+
+export CORS_TRUSTED_ORIGINS='*'
+
+export STRIPE_KEY=
+STRIPE_WEBHOOK_SECRET=
