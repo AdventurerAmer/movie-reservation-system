@@ -2,11 +2,11 @@
 
 ## Description
 
-	MRS An educational movie reservation system restful API.
+An educational movie reservation system RESTful API.
 
 ## Goal
 
-	The project's goal was purely educational, and I had fun learning about RESTful APIs,
+The project's goal was purely educational, and I had fun learning about RESTful APIs,
     system design, complex queries, transactions, and payment gateway integration.
 
 ## Features
